@@ -95,18 +95,14 @@ export const evento = {
     consultaMapa: "Melipilla, Región Metropolitana, Chile",
   },
 
-  /** FICTICIO — número de ejemplo con formato válido, no es real. */
   whatsapp: {
     /** Formato internacional sin +, espacios ni guiones. Ej: 56912345678 */
-    numero: "56900000000",
+    numero: "56978829942",
     etiqueta: "Aaron & Jasne",
   },
 
-  // FICTICIO — sin archivo de audio real todavía. El reproductor se oculta
-  // solo si /music/event-song.mp3 no existe (ver Musica.tsx), así que este
-  // título es inofensivo aunque el archivo falte.
   musica: {
-    /** Deja el archivo en public/music/ y apunta la ruta acá. */
+    /** Archivo real en public/music/event-song.mp3. */
     src: "/music/event-song.mp3",
     titulo: "Perfect",
     artista: "Ed Sheeran",
