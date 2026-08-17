@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource-variable/jost";
+
+/*
+ * Sistema de Aaron & Jasne.
+ *
+ * Dos mundos: la noche (entrada, portada, confirmación) y el papel (todo el
+ * relato). El acento es un rosa seco, no dorado — el dorado es el lugar
+ * común de toda invitación de boda y aquí queríamos otra cosa.
+ */
+@theme {
+  --color-noche: #0e1116;
+  --color-noche-alto: #171b22;
+  --color-hueso: #f4f0e8;
+  --color-hueso-hondo: #eae4d9;
+  --color-tinta: #191b1f;
+  --color-tinta-suave: #6c6862;
+  --color-rosa: #9c5a54;
+  --color-rosa-claro: #c08a80;
+  --color-piedra: #cec5b7;
+
+  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-sans: "Jost Variable", "Jost", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  /*
+   * Red de seguridad contra el scroll horizontal. Varias secciones esperan
+   * desplazadas en X antes de entrar en pantalla; si alguna se escapa de su
+   * contenedor, esto lo recorta. `clip` y no `hidden` porque `hidden` crea
+   * un contenedor de scroll y rompería cualquier `position: sticky`.
+   */
+  html {
+    -webkit-text-size-adjust: 100%;
+    overflow-x: clip;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-hueso);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    font-weight: 300;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: clip;
+  }
+
+  /* Instrument Serif solo tiene un peso. Nunca lo falseamos con negrita
+     sintética: parte de su carácter es esa voz única. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    letter-spacing: -0.015em;
+  }
+
+  ::selection {
+    background-color: var(--color-rosa);
+    color: var(--color-hueso);
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-rosa);
+    outline-offset: 3px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+    color: inherit;
+  }
+}
+
+@utility eyebrow {
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 400;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+
+/* Grano de película sobre toda la experiencia. Es el detalle que separa
+   "página web" de "pieza impresa". */
+@utility grano {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@utility campo {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  background: transparent;
+  padding: 0.75rem 0;
+  font-weight: 300;
+  outline: none;
+  transition: border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@utility campo {
+  &:focus {
+    border-bottom-color: var(--color-rosa);
+  }
+  &::placeholder {
+    color: color-mix(in srgb, currentColor 38%, transparent);
+  }
+}
+
+/* El cursor propio solo existe en escritorio con puntero fino. */
+@media (pointer: fine) {
+  .cursor-oculto,
+  .cursor-oculto * {
+    cursor: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
