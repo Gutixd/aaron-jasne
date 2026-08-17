@@ -41,17 +41,18 @@ const cronograma: ItemCronograma[] = [
 ];
 
 /**
- * PENDIENTE — sin fotografías todavía. Con `src: null` cada hueco dibuja
- * una composición con el numeral y un rombo, no un rectángulo roto: la
- * maqueta se puede revisar y aprobar antes de la sesión de fotos.
+ * FICTICIO — fotos de relleno de Picsum (picsum.photos), no de Aaron y
+ * Jasne. Semillas fijas para que cada una salga siempre igual mientras se
+ * revisa el diseño. Reemplázalas por las reales antes de publicar: basta
+ * con cambiar cada `src` por una ruta en `public/fotos/...`.
  */
 const galeria: FotoGaleria[] = [
-  { src: null, alt: "Aaron y Jasne", peso: 2 },
-  { src: null, alt: "Aaron y Jasne", peso: 1 },
-  { src: null, alt: "Aaron y Jasne", peso: 3 },
-  { src: null, alt: "Aaron y Jasne", peso: 1 },
-  { src: null, alt: "Aaron y Jasne", peso: 2 },
-  { src: null, alt: "Aaron y Jasne", peso: 1 },
+  { src: "https://picsum.photos/seed/aj-galeria-1/900/1200", alt: "Aaron y Jasne", peso: 2 },
+  { src: "https://picsum.photos/seed/aj-galeria-2/900/900", alt: "Aaron y Jasne", peso: 1 },
+  { src: "https://picsum.photos/seed/aj-galeria-3/900/1400", alt: "Aaron y Jasne", peso: 3 },
+  { src: "https://picsum.photos/seed/aj-galeria-4/900/900", alt: "Aaron y Jasne", peso: 1 },
+  { src: "https://picsum.photos/seed/aj-galeria-5/900/1200", alt: "Aaron y Jasne", peso: 2 },
+  { src: "https://picsum.photos/seed/aj-galeria-6/900/900", alt: "Aaron y Jasne", peso: 1 },
 ];
 
 export const evento = {
@@ -80,61 +81,65 @@ export const evento = {
 
   frase: "Dos historias que venían caminando solas y decidieron seguir juntas.",
 
+  // FICTICIO — lugar de ejemplo. Cambia estos cuatro valores por los reales.
   lugar: {
-    // PENDIENTE — sin definir. Se muestran como "por confirmar" hasta que existan.
-    nombre: "",
-    direccion: "",
-    ciudad: "",
+    nombre: "Viña Los Alerces",
+    direccion: "Camino a Melipilla Km 34",
+    ciudad: "Melipilla, Región Metropolitana",
     /** URL de Google Maps para el botón "Abrir en Google Maps". */
-    mapsUrl: "",
+    mapsUrl: "https://maps.google.com/?q=Melipilla+Region+Metropolitana",
     /**
      * Consulta de búsqueda para el mapa incrustado. Se usa el modo `place`
      * de Google Maps Embed, que no requiere clave de API.
      */
-    consultaMapa: "",
+    consultaMapa: "Melipilla, Región Metropolitana, Chile",
   },
 
-  /** PENDIENTE — número real de contacto para las confirmaciones. */
+  /** FICTICIO — número de ejemplo con formato válido, no es real. */
   whatsapp: {
     /** Formato internacional sin +, espacios ni guiones. Ej: 56912345678 */
-    numero: "",
+    numero: "56900000000",
     etiqueta: "Aaron & Jasne",
   },
 
+  // FICTICIO — sin archivo de audio real todavía. El reproductor se oculta
+  // solo si /music/event-song.mp3 no existe (ver Musica.tsx), así que este
+  // título es inofensivo aunque el archivo falte.
   musica: {
     /** Deja el archivo en public/music/ y apunta la ruta acá. */
     src: "/music/event-song.mp3",
-    titulo: "",
-    artista: "",
+    titulo: "Perfect",
+    artista: "Ed Sheeran",
   },
 
+  // FICTICIO — historia de ejemplo para ver el diseño con texto real.
   historia: [
     {
       numero: "01",
       titulo: "El comienzo",
       texto:
-        "PENDIENTE — acá va cómo se conocieron, contado corto y en primera persona. Dos o tres frases bastan; lo que sobra le quita fuerza.",
-      anio: "",
+        "Nos conocimos en la fila de un café que ninguno de los dos quería estar esperando. Diez minutos de conversación y ya habíamos perdido el interés en pedir algo para llevar.",
+      anio: "2021",
     },
     {
       numero: "02",
       titulo: "Nuestro camino",
       texto:
-        "PENDIENTE — los años del medio. Un viaje, una mudanza, una costumbre que solo ellos entienden.",
-      anio: "",
+        "Un departamento pequeño, un perro que llegó sin avisar y la costumbre de planear viajes que casi siempre terminábamos cambiando de ruta a mitad de camino.",
+      anio: "2023",
     },
     {
       numero: "03",
       titulo: "Momentos que recordamos",
       texto:
-        "PENDIENTE — la propuesta, o el día que supieron. El detalle concreto vale más que el adjetivo.",
-      anio: "",
+        "En un mirador al que subimos por accidente, sin señal y sin plan, Aaron sacó del bolso algo que llevaba escondido hacía semanas.",
+      anio: "2026",
     },
     {
       numero: "04",
       titulo: "El gran día",
       texto:
-        "PENDIENTE — la invitación propiamente tal, dicha por ellos.",
+        "Y ahora queremos que esa misma gente que nos vio empezar esté ahí para vernos decir que sí, esta vez frente a todos.",
       anio: "2027",
     },
   ],
@@ -142,24 +147,35 @@ export const evento = {
   cronograma,
   galeria,
 
+  // FICTICIO — fotos de relleno de Picsum, no de Aaron y Jasne. Cámbialas
+  // por rutas en public/fotos/ cuando tengan la sesión de fotos lista.
   fotos: {
-    portada: null as string | null,
-    historia: [null, null, null] as (string | null)[],
+    portada: "https://picsum.photos/seed/aj-portada/1600/2000",
+    historia: [
+      "https://picsum.photos/seed/aj-historia-1/1000/1250",
+      "https://picsum.photos/seed/aj-historia-2/1000/1250",
+      "https://picsum.photos/seed/aj-historia-3/1000/1000",
+    ] as (string | null)[],
   },
 
   dressCode: {
     titulo: "Formal",
-    nota: "PENDIENTE — indicación de vestuario.",
+    // FICTICIO — texto de ejemplo.
+    nota: "Traje oscuro y vestido largo o midi. Los jardines son de pasto, así que conviene pensarlo al elegir el taco.",
     reservado: "El blanco queda para Jasne.",
   },
 
-  /** Cierre de confirmaciones. PENDIENTE de definir junto con la fecha. */
+  /** FICTICIO — fecha límite de ejemplo, ajústala junto con la fecha real. */
   rsvp: {
     cierreIso: "2026-12-01T23:59:00-03:00",
     cierreTexto: "1 de diciembre de 2026",
   },
 
-  contacto: [] as { nombre: string; telefono: string }[],
+  // FICTICIO — contactos de ejemplo con números inventados.
+  contacto: [
+    { nombre: "Camila (organización)", telefono: "+56 9 0000 0001" },
+    { nombre: "Matías (padrino)", telefono: "+56 9 0000 0002" },
+  ],
 } as const;
 
 export type Evento = typeof evento;
