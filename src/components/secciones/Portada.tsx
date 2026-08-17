@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
 import { Rombo } from "../Marca";
+import { LineaMascaraAlMontar } from "../Revelar";
 import { evento, textoFecha } from "@/config/event.config";
 import { useMovimientoReducido } from "@/hooks";
 
@@ -74,19 +75,20 @@ export default function Portada() {
           Nos casamos
         </motion.span>
 
-        {/* Se sale ligeramente del margen izquierdo: gesto editorial. */}
-        <h1 className="-ml-[0.06em] font-display leading-[0.78]">
+        {/* Se sale ligeramente del margen izquierdo: gesto editorial.
+            El desahogo de la máscara reserva sitio para la cola de la "J"
+            de Jasne, que con este interlineado cerrado quedaría cortada. */}
+        <h1 className="-ml-[0.06em] font-display leading-[0.82]">
           {[evento.pareja.uno, evento.pareja.dos].map((nombre, i) => (
-            <span key={nombre} className="block overflow-hidden py-[0.04em]">
-              <motion.span
-                className="block text-[clamp(3.6rem,17vw,12rem)]"
-                initial={{ y: "112%" }}
-                animate={{ y: "0%" }}
-                transition={{ duration: 1.5, delay: 0.25 + i * 0.2, ease: silk }}
-              >
-                {i === 1 ? <span className="italic">{nombre}</span> : nombre}
-              </motion.span>
-            </span>
+            <LineaMascaraAlMontar
+              key={nombre}
+              className="text-[clamp(3.6rem,17vw,12rem)]"
+              delay={0.25 + i * 0.2}
+              duracion={1.5}
+              desahogo="0.24em"
+            >
+              {i === 1 ? <span className="italic">{nombre}</span> : nombre}
+            </LineaMascaraAlMontar>
           ))}
         </h1>
 

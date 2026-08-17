@@ -41,6 +41,87 @@ export function RevelarMascara({
 }
 
 /**
+ * Máscara para titulares en display grande, con las descendentes resueltas.
+ *
+ * El problema: con `line-height` muy ajustado la caja de línea es más baja
+ * que la letra. En Instrument Serif la "J" baja 0.21em bajo la línea base y
+ * con `leading-[0.82]` sobresale 0.14em de la caja — un `overflow-hidden`
+ * normal le corta la cola. Se veía en "Jasne".
+ *
+ * La solución es relleno inferior en la máscara (con margen negativo que lo
+ * compensa, para no alterar el ritmo vertical). Pero eso agranda la zona
+ * visible, así que el texto tiene que arrancar más abajo o asomaría una
+ * franja de las letras antes de tiempo: de ahí el 150% inicial.
+ *
+ * IMPORTANTE: el tamaño de letra va en `className`, sobre esta envoltura.
+ * El `desahogo` está en `em` y se resuelve contra el tamaño de fuente de
+ * este elemento; si el tamaño se pusiera en un hijo, `em` se calcularía
+ * contra los 16px heredados y el relleno se quedaría corto.
+ */
+export function LineaMascara({
+  children,
+  delay = 0,
+  duracion = 1.5,
+  className = "",
+  desahogo = "0.2em",
+}: {
+  children: ReactNode;
+  delay?: number;
+  duracion?: number;
+  className?: string;
+  /** Espacio reservado bajo la línea base. Súbelo si la fuente cambia. */
+  desahogo?: string;
+}) {
+  return (
+    <span
+      className={`block overflow-hidden ${className}`}
+      style={{ paddingBottom: desahogo, marginBottom: `-${desahogo}` }}
+    >
+      <motion.span
+        className="block"
+        initial={{ y: "150%" }}
+        whileInView={{ y: "0%" }}
+        viewport={{ once: true, amount: 0.4 }}
+        transition={{ duration: duracion, delay, ease: silk }}
+      >
+        {children}
+      </motion.span>
+    </span>
+  );
+}
+
+/** Igual que LineaMascara pero se dispara al montar, no al entrar en pantalla. */
+export function LineaMascaraAlMontar({
+  children,
+  delay = 0,
+  duracion = 1.5,
+  className = "",
+  desahogo = "0.2em",
+}: {
+  children: ReactNode;
+  delay?: number;
+  duracion?: number;
+  className?: string;
+  desahogo?: string;
+}) {
+  return (
+    <span
+      className={`block overflow-hidden ${className}`}
+      style={{ paddingBottom: desahogo, marginBottom: `-${desahogo}` }}
+    >
+      <motion.span
+        className="block"
+        initial={{ y: "150%" }}
+        animate={{ y: "0%" }}
+        transition={{ duration: duracion, delay, ease: silk }}
+      >
+        {children}
+      </motion.span>
+    </span>
+  );
+}
+
+/**
  * Palabra por palabra, con un desenfoque que se disuelve. Para frases con
  * peso emocional, donde interesa que se lean despacio.
  */

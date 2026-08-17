@@ -1,21 +1,22 @@
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Monograma, Rombo } from "./Marca";
-import { RevelarLetras } from "./Revelar";
+import { RevelarLetras, LineaMascaraAlMontar } from "./Revelar";
+import { Carta, Sello } from "./Carta";
 import { evento, textoFecha } from "@/config/event.config";
 import { useMagnetico, useMovimientoReducido } from "@/hooks";
 
 const silk = [0.22, 1, 0.36, 1] as const;
 
-type Fase = "cargando" | "frase" | "nombres" | "saliendo";
+type Fase = "cargando" | "frase" | "carta" | "saliendo";
 
 /**
- * La entrada. Es lo único que el invitado ve durante unos segundos, así que
- * carga con casi toda la primera impresión.
+ * La entrada.
  *
- * Secuencia: el monograma se traza mientras carga → "Una historia de dos…" →
- * los nombres emergen desde detrás de una máscara → botón. Al pulsarlo
- * arranca la música y la noche se parte en dos para dejar ver la invitación.
+ * Sobre la noche se apoya una carta de papel. La secuencia: el monograma se
+ * traza mientras carga → "Una historia de dos…" → la carta llega y se
+ * asienta, se dibujan sus filetes, suben los nombres, cae el sello de lacre
+ * → al pulsar el botón la carta se eleva y la noche se parte en dos.
  *
  * La noche no es el fondo del contenedor sino dos hojas independientes: por
  * eso puede abrirse de verdad en vez de solo desvanecerse.
@@ -24,18 +25,18 @@ export default function Portal({ onEntrar }: { onEntrar: () => void }) {
   const [fase, setFase] = useState<Fase>("cargando");
   const [visible, setVisible] = useState(true);
   const reducido = useMovimientoReducido();
-  const botonRef = useMagnetico<HTMLButtonElement>(0.28, 70);
+  const botonRef = useMagnetico<HTMLButtonElement>(0.26, 70);
 
   const saliendo = fase === "saliendo";
 
-  // Guion de la secuencia. Con movimiento reducido se salta al final.
+  // Guion de la secuencia. Con movimiento reducido se salta a la carta.
   useEffect(() => {
     if (reducido) {
-      setFase("nombres");
+      setFase("carta");
       return;
     }
     const a = window.setTimeout(() => setFase("frase"), 1900);
-    const b = window.setTimeout(() => setFase("nombres"), 4600);
+    const b = window.setTimeout(() => setFase("carta"), 4600);
     return () => {
       window.clearTimeout(a);
       window.clearTimeout(b);
@@ -86,7 +87,7 @@ export default function Portal({ onEntrar }: { onEntrar: () => void }) {
             lado === "izq" ? "left-0" : "right-0"
           }`}
           animate={saliendo ? { x: lado === "izq" ? "-101%" : "101%" } : { x: 0 }}
-          transition={{ duration: 1.7, delay: saliendo ? 0.5 : 0, ease: silk }}
+          transition={{ duration: 1.7, delay: saliendo ? 0.55 : 0, ease: silk }}
           onAnimationComplete={() => {
             if (saliendo && lado === "der") setVisible(false);
           }}
@@ -95,11 +96,7 @@ export default function Portal({ onEntrar }: { onEntrar: () => void }) {
 
       <Atmosfera apagando={saliendo} />
 
-      <motion.div
-        className="relative z-10 flex h-full flex-col items-center justify-center px-7 text-center"
-        animate={saliendo ? { opacity: 0, scale: 1.04, filter: "blur(6px)" } : {}}
-        transition={{ duration: 0.7, ease: silk }}
-      >
+      <div className="relative z-10 flex h-full flex-col items-center justify-center overflow-y-auto px-5 py-8 text-center">
         <AnimatePresence mode="wait">
           {fase === "cargando" && (
             <motion.div
@@ -131,70 +128,87 @@ export default function Portal({ onEntrar }: { onEntrar: () => void }) {
             </motion.p>
           )}
 
-          {(fase === "nombres" || saliendo) && (
-            <motion.div key="nombres" className="flex w-full flex-col items-center">
-              <motion.span
-                className="eyebrow text-[0.58rem] text-rosa-claro"
-                initial={{ opacity: 0, letterSpacing: "1.4em" }}
-                animate={{ opacity: 1, letterSpacing: "0.3em" }}
-                transition={{ duration: 2, ease: silk }}
-              >
-                Nos casamos
-              </motion.span>
+          {(fase === "carta" || saliendo) && (
+            <motion.div
+              key="carta"
+              className="flex w-full flex-col items-center"
+              // Al salir, la carta se va hacia arriba antes de que se abra la noche.
+              animate={
+                saliendo
+                  ? { y: -70, opacity: 0, scale: 0.96, filter: "blur(4px)" }
+                  : { y: 0, opacity: 1, scale: 1 }
+              }
+              transition={{ duration: 0.85, ease: silk }}
+            >
+              <Carta className="w-full max-w-[26rem] text-tinta sm:max-w-[30rem]">
+                <motion.span
+                  className="eyebrow block text-[0.55rem] text-rosa"
+                  initial={{ opacity: 0, letterSpacing: "1.4em" }}
+                  animate={{ opacity: 1, letterSpacing: "0.3em" }}
+                  transition={{ duration: 1.8, delay: 0.75, ease: silk }}
+                >
+                  Nos casamos
+                </motion.span>
 
-              <h1 className="mt-8 flex flex-col items-center font-display leading-[0.82]">
-                {[evento.pareja.uno, evento.pareja.dos].map((nombre, i) => (
-                  <span key={nombre} className="block overflow-hidden py-[0.06em]">
-                    <motion.span
-                      className="block text-[clamp(3.4rem,16vw,10rem)]"
-                      initial={{ y: "115%" }}
-                      animate={{ y: "0%" }}
-                      transition={{ duration: 1.5, delay: 0.35 + i * 0.28, ease: silk }}
+                {/* leading-[0.86] + LineaMascara: la máscara reserva sitio
+                    para la cola de la "J", que antes quedaba cortada. */}
+                <h1 className="mt-7 flex flex-col items-center font-display leading-[0.86]">
+                  {[evento.pareja.uno, evento.pareja.dos].map((nombre, i) => (
+                    <LineaMascaraAlMontar
+                      key={nombre}
+                      className="text-[clamp(2.9rem,13vw,5.4rem)]"
+                      delay={0.95 + i * 0.26}
+                      duracion={1.45}
+                      desahogo="0.22em"
                     >
                       {nombre}
-                    </motion.span>
-                  </span>
-                ))}
-              </h1>
+                    </LineaMascaraAlMontar>
+                  ))}
+                </h1>
 
-              <motion.span
-                className="mt-7 text-rosa-claro"
-                initial={{ opacity: 0, rotate: -120, scale: 0.3 }}
-                animate={{ opacity: 1, rotate: 0, scale: 1 }}
-                transition={{ duration: 1.3, delay: 1.15, ease: silk }}
-              >
-                <Rombo tam={11} />
-              </motion.span>
+                <motion.span
+                  className="mt-6 flex justify-center text-rosa"
+                  initial={{ opacity: 0, rotate: -120, scale: 0.3 }}
+                  animate={{ opacity: 1, rotate: 0, scale: 1 }}
+                  transition={{ duration: 1.2, delay: 1.75, ease: silk }}
+                >
+                  <Rombo tam={10} />
+                </motion.span>
 
-              <motion.p
-                className="eyebrow mt-7 text-[0.58rem] text-hueso/50"
-                initial={{ opacity: 0, y: 14 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1.1, delay: 1.35, ease: silk }}
-              >
-                {textoFecha()}
-              </motion.p>
+                <motion.p
+                  className="eyebrow mt-6 text-[0.55rem] text-tinta-suave"
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 1, delay: 1.95, ease: silk }}
+                >
+                  {textoFecha()}
+                </motion.p>
+
+                <div className="mt-9 flex justify-center">
+                  <Sello letras={`${evento.pareja.monograma.a}${evento.pareja.monograma.b}`} delay={2.2} />
+                </div>
+              </Carta>
 
               <motion.button
                 ref={botonRef}
                 type="button"
                 onClick={entrar}
                 disabled={saliendo}
-                className="group relative mt-16 cursor-pointer overflow-hidden border border-hueso/25 px-11 py-5 transition-[border-color] duration-500 hover:border-rosa-claro/70"
-                style={{ willChange: "transform" }}
+                className="group relative mt-10 cursor-pointer overflow-hidden border border-hueso/25 px-10 py-4.5 transition-[border-color] duration-500 hover:border-rosa-claro/70"
+                style={{ willChange: "transform", paddingTop: "1.05rem", paddingBottom: "1.05rem" }}
                 initial={{ opacity: 0, y: 22 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 1.2, delay: 1.7, ease: silk }}
+                transition={{ duration: 1.1, delay: 2.6, ease: silk }}
               >
                 <span className="absolute inset-0 origin-bottom scale-y-0 bg-rosa transition-transform duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
-                <span className="eyebrow relative text-[0.6rem] text-hueso">
+                <span className="eyebrow relative text-[0.58rem] text-hueso">
                   Entrar a nuestra historia
                 </span>
               </motion.button>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   );
 }
