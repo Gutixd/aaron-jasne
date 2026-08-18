@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Rombo } from "../Marca";
 import { RevelarMascara } from "../Revelar";
+import Mapa from "../Mapa";
 import { evento, pendiente } from "@/config/event.config";
 import { medir } from "@/lib/analytics";
 
@@ -69,6 +70,26 @@ export default function Llegar() {
               )}
             </motion.div>
 
+            {evento.lugar.notas.length > 0 && (
+              <ul className="mt-8 space-y-3">
+                {evento.lugar.notas.map((nota, i) => (
+                  <motion.li
+                    key={nota}
+                    className="flex items-baseline gap-3 text-[0.85rem] leading-[1.8] text-tinta-suave"
+                    initial={{ opacity: 0, x: -14 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.9, delay: 0.35 + i * 0.12, ease: silk }}
+                  >
+                    <span className="shrink-0 translate-y-[0.15rem] text-rosa/70">
+                      <Rombo tam={6} />
+                    </span>
+                    {nota}
+                  </motion.li>
+                ))}
+              </ul>
+            )}
+
             {urlDirecciones && (
               <motion.div
                 className="mt-10 flex flex-wrap items-center gap-4"
@@ -103,29 +124,22 @@ export default function Llegar() {
             )}
           </div>
 
-          <motion.div
-            className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-[3/2]"
-            initial={{ opacity: 0, clipPath: "inset(0% 0% 100% 0%)" }}
-            whileInView={{ opacity: 1, clipPath: "inset(0% 0% 0% 0%)" }}
-            viewport={{ once: true, amount: 0.3 }}
-            transition={{ duration: 1.5, ease: silk }}
-          >
-            {srcMapa ? (
-              <iframe
-                src={srcMapa}
-                title={`Mapa de ${evento.lugar.nombre || "la celebración"}`}
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-                className="h-full w-full border-0 grayscale-[35%]"
-              />
-            ) : (
+          {srcMapa ? (
+            <Mapa src={srcMapa} />
+          ) : (
+            <motion.div
+              className="relative aspect-[4/3] w-full overflow-hidden lg:aspect-[16/11]"
+              initial={{ opacity: 0, clipPath: "inset(0% 0% 100% 0%)" }}
+              whileInView={{ opacity: 1, clipPath: "inset(0% 0% 0% 0%)" }}
+              viewport={{ once: true, amount: 0.3 }}
+              transition={{ duration: 1.5, ease: silk }}
+            >
               <div className="flex h-full w-full flex-col items-center justify-center gap-5 bg-hueso-hondo text-piedra">
                 <Rombo tam={18} />
                 <span className="eyebrow text-[0.5rem] opacity-70">Lugar por confirmar</span>
               </div>
-            )}
-          </motion.div>
+            </motion.div>
+          )}
         </div>
       </div>
     </section>

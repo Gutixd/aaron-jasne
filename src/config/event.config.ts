@@ -81,7 +81,7 @@ export const evento = {
 
   frase: "Dos historias que venían caminando solas y decidieron seguir juntas.",
 
-  // FICTICIO — lugar de ejemplo. Cambia estos cuatro valores por los reales.
+  // FICTICIO — lugar de ejemplo. Cambia estos valores por los reales.
   lugar: {
     nombre: "Viña Los Alerces",
     direccion: "Camino a Melipilla Km 34",
@@ -93,6 +93,17 @@ export const evento = {
      * de Google Maps Embed, que no requiere clave de API.
      */
     consultaMapa: "Melipilla, Región Metropolitana, Chile",
+    /**
+     * Coordenadas en grados, solo como detalle tipográfico sobre el plano.
+     * Déjalo vacío y no se dibuja. FICTICIO: son las de Melipilla, no las
+     * de un recinto concreto.
+     */
+    coordenadas: "33°41′S · 71°13′O",
+    /** FICTICIO — apuntes de logística. Lista vacía = no se muestra el bloque. */
+    notas: [
+      "45 minutos desde Santiago por la Ruta 78",
+      "Estacionamiento dentro del recinto",
+    ] as string[],
   },
 
   whatsapp: {
