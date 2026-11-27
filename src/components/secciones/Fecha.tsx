@@ -39,6 +39,16 @@ export default function Fecha() {
     ...Array.from({ length: diasMes }, (_, i) => i + 1),
   ];
   const diaSemana = SEMANA[new Date(Date.UTC(anio, mes, dia)).getUTCDay()];
+  // Ceremonia: la hora del evento, en hora de Chile. Llegada: el primer
+  // momento del programa, si es una hora (ej. 15:30); si no, la ceremonia.
+  const ceremonia = new Intl.DateTimeFormat("es-CL", {
+    timeZone: "America/Santiago",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date(evento.fecha.iso));
+  const primera = evento.programa[0]?.hora ?? "";
+  const llegada = /^\d{1,2}:\d{2}$/.test(primera) ? primera : ceremonia;
 
   return (
     <section id="fecha" className="papel px-6 pb-14 text-center">
@@ -48,7 +58,15 @@ export default function Fecha() {
         <p className="mt-3 font-serif text-[clamp(2.4rem,11vw,3rem)] font-medium tracking-[0.06em] text-oliva-hondo tabular-nums">
           {String(dia).padStart(2, "0")} . {String(mes + 1).padStart(2, "0")} . {anio}
         </p>
-        <p className="rotulo mt-1 text-[0.78rem] text-tinta">{diaSemana}</p>
+        <p className="rotulo mt-1 text-[0.78rem] text-tinta">
+          {diaSemana}
+          {confirmada && llegada && <> · {llegada} hrs</>}
+        </p>
+        {/* La hora de llegada es lo que más importa para no atrasarse; la
+            de la ceremonia va debajo, más chica. */}
+        {confirmada && llegada && ceremonia && llegada !== ceremonia && (
+          <p className="mt-1 text-[0.98rem] italic text-tinta-suave">Ceremonia a las {ceremonia}</p>
+        )}
 
         {!confirmada && (
           <p className="mx-auto mt-2 max-w-[17rem] text-[0.92rem] italic text-tinta-suave">
