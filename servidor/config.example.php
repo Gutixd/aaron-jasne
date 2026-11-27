@@ -24,8 +24,8 @@ return [
     // "hasta" (hora de Chile, formato exacto AAAA-MM-DD HH:MM:SS). Las fotos
     // se guardan fuera de public_html, en la carpeta fotos-invitados/.
     'fotos' => [
-        'desde'        => '2027-01-16 12:00:00', // el día de la boda
-        'hasta'        => '2027-01-23 23:59:59', // una semana después
+        'desde'        => '2027-01-15 12:00:00', // el día de la boda
+        'hasta'        => '2027-01-22 23:59:59', // una semana después
         'max_mb'       => 15,    // por foto (la página ya las achica antes de subir)
         'max_total_mb' => 8000,  // tope de todo lo subido
         'max_fotos'    => 3000,  // tope de cantidad

@@ -28,15 +28,15 @@ export type ItemPrograma = {
   icono: Icono;
 };
 
-/** FICTICIO — horarios de ejemplo. */
+/**
+ * Lo que contó la novia: llegar 15:30, ceremonia 16:00, cóctel de recepción
+ * y luego la fiesta con buffet y bar abierto. Sin horas para lo de después.
+ */
 const programa: ItemPrograma[] = [
-  { hora: "18:00", titulo: "Llegada", detalle: "de los invitados", icono: "copas" },
-  { hora: "18:30", titulo: "Ceremonia", icono: "anillos" },
-  { hora: "19:15", titulo: "Sesión de fotos", icono: "camara" },
-  { hora: "20:00", titulo: "Cena", icono: "cubiertos" },
-  { hora: "21:30", titulo: "Torta", detalle: "& Brindis", icono: "torta" },
-  { hora: "22:00", titulo: "Fiesta", icono: "musica" },
-  { hora: "02:00", titulo: "Fin de la noche", icono: "destello" },
+  { hora: "15:30", titulo: "Llegada", detalle: "de los invitados", icono: "arco" },
+  { hora: "16:00", titulo: "Ceremonia", icono: "anillos" },
+  { hora: "Luego", titulo: "Cóctel", detalle: "de recepción", icono: "copas" },
+  { hora: "Y después", titulo: "¡Fiesta!", detalle: "buffet y bar abierto", icono: "musica" },
 ];
 
 /** Galería: public/fotos/galeria-1.jpg … galeria-4.jpg (agregar números para más fotos) */
@@ -54,15 +54,14 @@ export const evento = {
 
   fecha: {
     /**
-     * PENDIENTE — día exacto sin confirmar; enero 2027 es lo único cerrado.
-     * Con `confirmada: false` la invitación avisa que es una fecha estimada.
-     * Cuando sepas el día: cambia el ISO y pon `confirmada: true`.
+     * Viernes 15 de enero de 2027, ceremonia 16:00 (llegar 15:30).
+     * Con `confirmada: false` la invitación diría "fecha estimada".
      */
-    iso: "2027-01-16T18:00:00-03:00",
-    confirmada: false,
+    iso: "2027-01-15T16:00:00-03:00",
+    confirmada: true,
     aproximada: "Enero 2027",
-    larga: "Sábado 16 de enero de 2027",
-    corta: "16.01.27",
+    larga: "Viernes 15 de enero de 2027",
+    corta: "15.01.27",
   },
 
   textos: {
@@ -136,11 +135,9 @@ export const evento = {
   menu: {
     nota: "Si tienes alguna restricción alimentaria, cuéntanos al confirmar.",
     tiempos: [
-      { tiempo: "Cóctel", plato: "Bocados fríos y calientes, espumante y jugos naturales" },
-      { tiempo: "Entrada", plato: "Carpaccio de res con rúcula y parmesano", opciones: "Vegetariana: burrata con tomates asados" },
-      { tiempo: "Fondo", plato: "Filete al vino tinto con papas rústicas", opciones: "Vegetariana: risotto de hongos" },
-      { tiempo: "Postre", plato: "Torta de novios y mesa de dulces" },
-      { tiempo: "Trasnoche", plato: "Completos y sándwiches para recargar energías" },
+      { tiempo: "Cóctel de recepción", plato: "Después de la ceremonia" },
+      { tiempo: "Buffet libre", plato: "Carnes, guarniciones y ensaladas" },
+      { tiempo: "Bar abierto", plato: "Toda la fiesta", opciones: "¡Que se preparen los hígados!" },
     ] as { tiempo: string; plato: string; opciones?: string }[],
   },
 

@@ -132,11 +132,12 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         foreach (preg_split('/\r?\n/', $P('programa', 3000)) ?: [] as $n => $l) {
             if (trim($l) === '') continue;
             $x = array_map('trim', explode('|', $l));
-            if (!preg_match('/^\d{1,2}:\d{2}$/', $x[0] ?? '') || ($x[1] ?? '') === '') {
-                $errores[] = 'Programa, línea ' . ($n + 1) . ': falta la hora (ej. 18:30) o el título.';
+            // La "hora" puede ser una hora (16:00) o un texto corto ("Luego").
+            if (($x[0] ?? '') === '' || ($x[1] ?? '') === '') {
+                $errores[] = 'Programa, línea ' . ($n + 1) . ': falta la hora (ej. 16:00 o "Luego") o el título.';
                 continue;
             }
-            $item = ['hora' => $x[0], 'titulo' => mb_substr($x[1], 0, 60),
+            $item = ['hora' => mb_substr($x[0], 0, 14), 'titulo' => mb_substr($x[1], 0, 60),
                      'icono' => in_array($x[3] ?? '', $iconos, true) ? $x[3] : 'destello'];
             if (($x[2] ?? '') !== '') $item['detalle'] = mb_substr($x[2], 0, 60);
             $c['programa'][] = $item;
@@ -661,7 +662,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
 
       <section class="tarjeta">
         <h3>Programa</h3>
-        <p class="sub" style="margin:0 0 6px">Una línea por momento: <b>hora | título | detalle | ícono</b>. Íconos: copas, anillos, arco, camara, cubiertos, torta, musica, destello.</p>
+        <p class="sub" style="margin:0 0 6px">Una línea por momento: <b>hora | título | detalle | ícono</b> (la hora puede ser un texto, ej. "Luego"). Íconos: copas, anillos, arco, camara, cubiertos, torta, musica, destello.</p>
         <textarea name="programa" rows="8" class="mono"><?= $v('programa', $lineasPrograma) ?></textarea>
       </section>
 
