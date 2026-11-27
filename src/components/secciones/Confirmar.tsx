@@ -4,14 +4,24 @@ import { Rombo, Separador } from "../Marca";
 import { RevelarMascara } from "../Revelar";
 import Confeti from "../Confeti";
 import { evento, textoFecha } from "@/config/event.config";
-import { supabase, modoDemo } from "@/lib/supabase";
 import { hayWhatsapp, mensajeConfirmacion, urlWhatsapp } from "@/lib/whatsapp";
 import { medir } from "@/lib/analytics";
 
 const silk = [0.22, 1, 0.36, 1] as const;
 
 type Asistencia = "si" | "no";
-type Estado = "formulario" | "enviando" | "listo";
+type Estado = "formulario" | "listo";
+
+/** El texto que viaja por WhatsApp, armado desde lo que llenó el invitado. */
+const textoRespuesta = (d: Datos) =>
+  mensajeConfirmacion({
+    nombre: d.nombre.trim(),
+    asiste: d.asistencia === "si",
+    acompanantes: d.asistencia === "si" ? d.acompanantes : 0,
+    telefono: d.telefono.trim(),
+    alimentacion: d.asistencia === "si" ? d.alimentacion.trim() : "",
+    mensaje: d.mensaje.trim(),
+  });
 
 type Datos = {
   nombre: string;
@@ -47,42 +57,33 @@ export default function Confirmar() {
 
   const cerrado = Date.now() > new Date(evento.rsvp.cierreIso).getTime();
 
-  const enviar = async (e: React.FormEvent) => {
+  /**
+   * Sin servidor, la confirmación viaja por WhatsApp: se abre el chat de los
+   * novios con la respuesta completa escrita y el invitado pulsa enviar.
+   *
+   * La ventana se abre de forma síncrona, dentro del mismo clic. Si hubiera
+   * cualquier `await` antes, el navegador ya no lo consideraría un gesto del
+   * usuario y bloquearía la ventana emergente.
+   */
+  const enviar = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
-    // Validación en cliente. La base repite las suyas con CHECK constraints:
-    // nunca confiamos solo en el navegador.
     const nombre = d.nombre.trim();
     if (nombre.length < 2) return setError("Escribe tu nombre completo.");
     if (!d.asistencia) return setError("Dinos si nos acompañas.");
     if (d.acompanantes < 0 || d.acompanantes > 10)
       return setError("El número de acompañantes no parece correcto.");
+    if (!hayWhatsapp())
+      return setError("Todavía no hay un número de contacto configurado.");
 
-    setEstado("enviando");
+    const asiste = d.asistencia === "si";
+    window.open(urlWhatsapp(textoRespuesta(d)), "_blank", "noopener");
 
-    const fila = {
-      nombre,
-      telefono: d.telefono.trim() || null,
-      asistencia: d.asistencia === "si",
-      acompanantes: d.asistencia === "si" ? d.acompanantes : 0,
-      alimentacion: d.alimentacion.trim() || null,
-      mensaje: d.mensaje.trim() || null,
-    };
-
-    if (supabase) {
-      const { error: err } = await supabase.from("guests").insert(fila);
-      if (err) {
-        console.error("[rsvp]", err.message);
-        setEstado("formulario");
-        setError("No pudimos guardar tu respuesta. Inténtalo de nuevo en un momento.");
-        return;
-      }
-    }
-
-    medir(d.asistencia === "si" ? "rsvp_completado" : "rsvp_declinado", {
-      acompanantes: fila.acompanantes,
+    medir(asiste ? "rsvp_completado" : "rsvp_declinado", {
+      acompanantes: asiste ? d.acompanantes : 0,
     });
+    medir("clic_whatsapp", { origen: "rsvp" });
     setEstado("listo");
   };
 
@@ -265,20 +266,18 @@ export default function Confirmar() {
 
                 <button
                   type="submit"
-                  disabled={estado === "enviando" || cerrado}
+                  disabled={cerrado}
                   className="group relative w-full cursor-pointer overflow-hidden border border-hueso/25 py-5 transition-colors duration-500 hover:border-rosa disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <span className="absolute inset-0 origin-bottom scale-y-0 bg-rosa transition-transform duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-disabled:scale-y-0" />
                   <span className="eyebrow relative text-[0.58rem]">
-                    {estado === "enviando" ? "Enviando…" : "Confirmar asistencia"}
+                    Confirmar por WhatsApp
                   </span>
                 </button>
 
-                {modoDemo && (
-                  <p className="text-center text-[0.72rem] text-hueso/30">
-                    Modo demostración: la respuesta se valida pero no se guarda.
-                  </p>
-                )}
+                <p className="text-center text-[0.72rem] leading-relaxed text-hueso/30">
+                  Se abre WhatsApp con tu respuesta ya escrita. Solo falta tocar enviar.
+                </p>
               </form>
             </motion.div>
           )}
@@ -321,32 +320,29 @@ function Gracias({ datos, nombrePila }: { datos: Datos; nombrePila: string }) {
 
       <p className="mx-auto mt-7 max-w-sm text-[0.95rem] leading-[1.95] text-hueso/55">
         {asiste
-          ? "Nos alegra muchísimo saber que estarás con nosotros. Te escribiremos con los detalles finales apenas los tengamos."
+          ? "Nos alegra muchísimo saber que estarás con nosotros."
           : "Te vamos a extrañar ese día. Gracias por tomarte el momento de decirnos."}
       </p>
 
       <Separador className="mx-auto mt-12 text-hueso/25" ancho="3rem" />
 
-      {asiste && hayWhatsapp() && (
-        <div className="mt-12">
-          <p className="eyebrow text-[0.55rem] text-hueso/40">
-            ¿Quieres avisarnos directamente por WhatsApp?
-          </p>
-          <a
-            href={urlWhatsapp(mensajeConfirmacion(datos.nombre.trim(), datos.acompanantes))}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => medir("clic_whatsapp", { origen: "rsvp" })}
-            className="group relative mt-6 inline-block overflow-hidden border border-hueso/25 px-9 py-4 transition-colors duration-500 hover:border-rosa"
-          >
-            <span className="absolute inset-0 origin-bottom scale-y-0 bg-rosa transition-transform duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
-            <span className="eyebrow relative text-[0.55rem]">Confirmar por WhatsApp</span>
-          </a>
-          <p className="mx-auto mt-5 max-w-xs text-[0.72rem] leading-relaxed text-hueso/25">
-            Se abre WhatsApp con el mensaje escrito. Tú decides cuándo enviarlo.
-          </p>
-        </div>
-      )}
+      {/* La respuesta llega recién cuando se envía en WhatsApp: lo decimos
+          claro y dejamos cómo reabrirlo si la ventana no apareció. */}
+      <div className="mt-12">
+        <p className="mx-auto max-w-xs text-[0.85rem] leading-relaxed text-hueso/50">
+          Abrimos WhatsApp con tu respuesta escrita. Solo falta tocar enviar para que nos llegue.
+        </p>
+        <a
+          href={urlWhatsapp(textoRespuesta(datos))}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={() => medir("clic_whatsapp", { origen: "rsvp_reabrir" })}
+          className="group relative mt-6 inline-block overflow-hidden border border-hueso/25 px-9 py-4 transition-colors duration-500 hover:border-rosa"
+        >
+          <span className="absolute inset-0 origin-bottom scale-y-0 bg-rosa transition-transform duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
+          <span className="eyebrow relative text-[0.55rem]">¿No se abrió? Abrir WhatsApp</span>
+        </a>
+      </div>
 
       <p className="mt-14 font-display text-lg italic text-hueso/35">
         {textoFecha()}

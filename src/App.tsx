@@ -1,40 +1,15 @@
-import { lazy, Suspense, useEffect } from "react";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { useEffect } from "react";
 import Invitacion from "./Invitacion";
 import { iniciarAnalytics } from "@/lib/analytics";
 
 /**
- * El panel viaja en su propio chunk y solo se descarga al visitar /admin.
- * Un invitado que abre la invitación no paga el peso de la administración.
+ * Sitio de una sola página, sin servidor ni base de datos: la invitación es
+ * todo lo que hay. Las confirmaciones viajan por WhatsApp.
  */
-const Admin = lazy(() => import("./admin/AdminApp"));
-
 export default function App() {
   useEffect(() => {
     iniciarAnalytics();
   }, []);
 
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Invitacion />} />
-        <Route
-          path="/admin/*"
-          element={
-            <Suspense fallback={<CargandoPanel />}>
-              <Admin />
-            </Suspense>
-          }
-        />
-      </Routes>
-    </BrowserRouter>
-  );
-}
-
-function CargandoPanel() {
-  return (
-    <div className="flex min-h-[100svh] items-center justify-center bg-hueso">
-      <p className="eyebrow text-[0.55rem] text-tinta-suave">Cargando panel…</p>
-    </div>
-  );
+  return <Invitacion />;
 }

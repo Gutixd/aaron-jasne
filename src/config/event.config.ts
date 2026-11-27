@@ -5,10 +5,9 @@
  * dio ese dato todavía. No están inventados para rellenar, están señalados
  * para que se reemplacen. La interfaz sabe leer esas banderas y se comporta
  * distinto mientras no estén confirmados (ver `fecha.confirmada`).
+ * Los marcados FICTICIO son contenido de ejemplo para reemplazar.
  *
- * Cuando el panel de administración guarda cambios, sobrescribe estos valores
- * en la tabla `settings`; este archivo queda como el respaldo con el que la
- * invitación arranca aunque la base no responda.
+ * No hay base de datos: todo el contenido sale de este archivo.
  */
 
 export type ItemCronograma = {

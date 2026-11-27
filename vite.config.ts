@@ -8,17 +8,15 @@ export default defineConfig({
   resolve: {
     alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
-  server: { port: 4400 },
+  // 4410 y no 4400: ese puerto lo usa otro proyecto de esta máquina.
+  server: { port: 4410, open: true },
+  preview: { port: 4410 },
   build: {
-    // El panel viaja en su propio chunk: un invitado que solo abre la
-    // invitación nunca descarga el código de administración.
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules")) {
-            if (id.includes("@supabase")) return "supabase";
-            if (id.includes("framer-motion") || id.includes("motion-dom")) return "motion";
-            if (id.includes("react-router")) return "router";
+          if (id.includes("node_modules") && (id.includes("framer-motion") || id.includes("motion-dom"))) {
+            return "motion";
           }
         },
       },
