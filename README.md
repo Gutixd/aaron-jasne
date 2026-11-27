@@ -89,15 +89,15 @@ un QR para las mesas.
 
 ### Publicar en Hostinger
 
-1. `npm run build` y subir el contenido de `dist/` a `public_html`.
-2. hPanel › Bases de datos › crear una base MySQL (nombre, usuario, clave).
-3. Copiar `servidor/config.example.php` como `public_html/api/config.php` y
-   completar los datos de la base, el hash de la clave del panel
-   (`php servidor/crear-clave.php "la-clave"`) y una sal aleatoria.
+**Automático:** cada `git push` a `main` dispara la GitHub Action
+`Publicar en Hostinger`, que hace el build y deja `dist/` en la rama
+`hostinger`. Hostinger (hPanel › Avanzado › GIT, implementación automática)
+despliega esa rama en `public_html` en 1–2 minutos.
 
-Las tablas se crean solas la primera vez. `config.php` nunca va a git.
-
----
+La configuración con la clave de la base va **fuera** de `public_html`, en
+`config-boda.php` (junto a `fotos-invitados/`): esa carpeta la maneja el
+repositorio. Plantilla: `servidor/config.example.php`. Las tablas se crean
+solas. Nunca va a git.
 
 ## Estructura
 
