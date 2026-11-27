@@ -149,16 +149,16 @@ export const evento = {
     texto:
       "Tu presencia es nuestro mejor regalo. Si además quieres hacernos un obsequio, puedes hacerlo por transferencia a la cuenta de Aaron.",
     /**
-     * PENDIENTE — datos de la cuenta de Aaron. Mientras alguno diga
-     * PENDIENTE, la invitación dice que estarán pronto en vez de la tarjeta.
+     * Cuenta de Aaron. Si un dato quedara en PENDIENTE, la invitación dice
+     * que estarán pronto en vez de mostrar la tarjeta.
      */
     transferencia: {
-      titular: "PENDIENTE",
-      rut: "PENDIENTE",
-      banco: "PENDIENTE",
-      tipoCuenta: "PENDIENTE", // ej. "Cuenta corriente", "Cuenta vista / RUT"
-      numero: "PENDIENTE",
-      correo: "PENDIENTE",
+      titular: "Esteban Araya",
+      rut: "16.105.609-K",
+      banco: "Banco Edwards",
+      tipoCuenta: "Cuenta corriente",
+      numero: "00-310-11987-01",
+      correo: "esteban.aaron10@gmail.com",
     },
   },
 
