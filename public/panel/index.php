@@ -12,7 +12,7 @@ require __DIR__ . '/_sesion.php';
 
 $error = null;
 $aviso = null;
-$vista = in_array($_GET['v'] ?? '', ['respuestas', 'fotos', 'regalos'], true) ? $_GET['v'] : 'invitados';
+$vista = in_array($_GET['v'] ?? '', ['respuestas', 'fotos', 'regalos', 'contenido'], true) ? $_GET['v'] : 'invitados';
 const FOTOS_POR_PAGINA = 60;
 const FOTOS_POR_ZIP = 150;
 
@@ -102,6 +102,92 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         header('Location: ./?v=fotos&ok=foto');
         exit;
+    } elseif ($accion === 'contenido') {
+        // Todo el formulario de "Contenido" de una vez. Si algo no está bien,
+        // no se guarda nada y se explica qué corregir.
+        $P = static fn(string $k, int $max = 300): string => trim(mb_substr((string) ($_POST[$k] ?? ''), 0, $max));
+        $errores = [];
+        $c = [];
+
+        $iso = iso_chile($P('fecha_dia', 10), $P('fecha_hora', 5));
+        if ($iso) {
+            $c['fecha'] = ['iso' => $iso, 'confirmada' => isset($_POST['fecha_confirmada'])];
+        } else {
+            $errores[] = 'La fecha o la hora no son válidas.';
+        }
+
+        $c['textos'] = ['anuncio' => $P('anuncio', 600)];
+
+        $maps = $P('lugar_maps', 600);
+        if ($maps !== '' && !preg_match('#^https://#', $maps)) $errores[] = 'El link del mapa debe empezar con https://';
+        $c['lugar'] = ['nombre' => $P('lugar_nombre', 120), 'direccion' => $P('lugar_direccion', 200),
+                       'ciudad' => $P('lugar_ciudad', 120), 'mapsUrl' => $maps];
+
+        $wa = preg_replace('/\D/', '', $P('whatsapp', 30)) ?? '';
+        if ($wa !== '' && (strlen($wa) < 8 || strlen($wa) > 15)) $errores[] = 'El WhatsApp debe ir con código de país, ej. 56912345678.';
+        $c['whatsapp'] = ['numero' => $wa];
+
+        $iconos = ['copas', 'anillos', 'arco', 'camara', 'cubiertos', 'torta', 'musica', 'destello'];
+        $c['programa'] = [];
+        foreach (preg_split('/\r?\n/', $P('programa', 3000)) ?: [] as $n => $l) {
+            if (trim($l) === '') continue;
+            $x = array_map('trim', explode('|', $l));
+            if (!preg_match('/^\d{1,2}:\d{2}$/', $x[0] ?? '') || ($x[1] ?? '') === '') {
+                $errores[] = 'Programa, línea ' . ($n + 1) . ': falta la hora (ej. 18:30) o el título.';
+                continue;
+            }
+            $item = ['hora' => $x[0], 'titulo' => mb_substr($x[1], 0, 60),
+                     'icono' => in_array($x[3] ?? '', $iconos, true) ? $x[3] : 'destello'];
+            if (($x[2] ?? '') !== '') $item['detalle'] = mb_substr($x[2], 0, 60);
+            $c['programa'][] = $item;
+        }
+
+        $tiempos = [];
+        foreach (preg_split('/\r?\n/', $P('menu', 3000)) ?: [] as $n => $l) {
+            if (trim($l) === '') continue;
+            $x = array_map('trim', explode('|', $l));
+            if (($x[0] ?? '') === '' || ($x[1] ?? '') === '') {
+                $errores[] = 'Menú, línea ' . ($n + 1) . ': falta el tiempo o el plato.';
+                continue;
+            }
+            $t = ['tiempo' => mb_substr($x[0], 0, 40), 'plato' => mb_substr($x[1], 0, 160)];
+            if (($x[2] ?? '') !== '') $t['opciones'] = mb_substr($x[2], 0, 160);
+            $tiempos[] = $t;
+        }
+        $c['menu'] = ['nota' => $P('menu_nota', 300), 'tiempos' => $tiempos];
+
+        $c['vestimenta'] = ['nota' => $P('vestimenta', 300)];
+
+        $tr = [];
+        foreach (['titular', 'rut', 'banco', 'tipoCuenta', 'numero', 'correo'] as $k) {
+            $tr[$k] = $P('tr_' . $k, 120) ?: 'PENDIENTE';
+        }
+        $c['regalo'] = ['texto' => $P('regalo_texto', 600), 'transferencia' => $tr];
+
+        $cierre = iso_chile($P('rsvp_cierre', 10), '23:59');
+        if ($cierre) {
+            $c['rsvp'] = ['cierreIso' => $cierre];
+        } else {
+            $errores[] = 'La fecha límite para confirmar no es válida.';
+        }
+
+        // Ventana de la subida de fotos (datetime-local: 2027-01-16T12:00).
+        $fv = static function (string $v): ?string {
+            return preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/', $v) ? str_replace('T', ' ', $v) . ':00' : null;
+        };
+        $fotosVentana = ['desde' => $fv($P('fotos_desde', 16)), 'hasta' => $fv($P('fotos_hasta', 16))];
+        if ($fotosVentana['desde'] && $fotosVentana['hasta'] && $fotosVentana['desde'] >= $fotosVentana['hasta']) {
+            $errores[] = 'Fotos: el cierre de la subida debe ser después de la apertura.';
+        }
+
+        if ($errores) {
+            $error = implode(' ', $errores);
+        } else {
+            guardar_ajuste('contenido', $c);
+            guardar_ajuste('fotos', array_filter($fotosVentana));
+            header('Location: ./?v=contenido&ok=contenido');
+            exit;
+        }
     } elseif ($accion === 'agradecido') {
         // Marca (o desmarca) que ya se agradeció el regalo.
         $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
@@ -130,7 +216,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 $avisos = ['borrada' => 'Respuesta eliminada.', 'agregado' => 'Invitado agregado.',
-           'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.', 'foto' => 'Foto eliminada.', 'regalo' => 'Aviso de regalo eliminado.'];
+           'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.', 'foto' => 'Foto eliminada.', 'regalo' => 'Aviso de regalo eliminado.',
+           'contenido' => 'Contenido guardado. La invitación ya lo muestra.'];
 $aviso ??= $avisos[$_GET['ok'] ?? ''] ?? null;
 
 // ── Datos ───────────────────────────────────────────────────────────────
@@ -251,7 +338,9 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   .wa { background:#2f6b4a; color:#fff; border-color:#2f6b4a; }
   main { padding:24px 0 80px; }
   h2 { font-size:1.9rem; margin:0; }
-  .pestanas { display:flex; gap:4px; border-bottom:1px solid var(--linea); margin-bottom:22px; }
+  /* En el celular no caben las 5 pestañas: se deslizan de lado. */
+  .pestanas { display:flex; gap:4px; border-bottom:1px solid var(--linea); margin-bottom:22px; overflow-x:auto; scrollbar-width:none; }
+  .pestanas a { white-space:nowrap; flex-shrink:0; }
   .pestanas a { text-decoration:none; padding:10px 14px; border-bottom:2px solid transparent; color:var(--suave); }
   .pestanas a.activo { color:var(--oliva); border-color:var(--oliva); }
   .cifras { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin:18px 0 26px; }
@@ -283,6 +372,14 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   form.inline { display:inline; } td button, td .boton { padding:5px 9px; font-size:.6rem; }
   .cupos { display:flex; gap:4px; align-items:center; } .cupos input { width:56px; padding:4px 6px; }
   .lista-simple li { margin:6px 0; }
+  form.contenido { display:grid; gap:14px; max-width:760px; }
+  .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .fila > div, .fila3 > div { min-width:0; }
+  .check { display:flex; gap:8px; align-items:baseline; margin-top:12px; } .check input { width:auto; }
+  textarea.mono { font:15px/1.6 ui-monospace,Consolas,monospace; }
+  .guardar { position:sticky; bottom:0; margin:0; padding:12px 0; background:linear-gradient(transparent, var(--papel) 35%); }
+  .guardar button { width:100%; padding:14px; }
+  input, textarea { font-variant-numeric:lining-nums; }
   .galeria { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
   .galeria figure { margin:0; background:var(--claro); border:1px solid var(--linea); border-radius:4px; overflow:hidden; }
   .galeria img { display:block; width:100%; aspect-ratio:1; object-fit:cover; background:#e4ded1; }
@@ -295,6 +392,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   .login button { width:100%; padding:13px; background:var(--claro); color:var(--oliva); }
   @media (max-width:760px) {
     .cifras { grid-template-columns:repeat(2,1fr); } .cargar { grid-template-columns:1fr; }
+    .fila, .fila3 { grid-template-columns:1fr; }
     input[type=search] { width:100%; }
     table, thead, tbody, tr, td { display:block; } thead { display:none; } table { border:0; background:none; }
     tr { background:var(--claro); border:1px solid var(--linea); margin-bottom:8px; padding:8px 0; border-radius:4px; } td { border:0; padding:3px 12px; }
@@ -335,6 +433,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
       <a class="<?= $vista === 'respuestas' ? 'activo' : '' ?>" href="?v=respuestas">Respuestas (<?= count($respuestas) ?>)</a>
       <a class="<?= $vista === 'fotos' ? 'activo' : '' ?>" href="?v=fotos">Fotos (<?= $fotosN ?>)</a>
       <a class="<?= $vista === 'regalos' ? 'activo' : '' ?>" href="?v=regalos">Regalos (<?= count($regalos) ?>)</a>
+      <a class="<?= $vista === 'contenido' ? 'activo' : '' ?>" href="?v=contenido">Contenido</a>
     </nav>
 
     <section class="cifras">
@@ -437,6 +536,105 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
       <?php endif; ?>
       <?php if ($sueltas): ?><p class="sub" style="margin-top:14px"><?= $sueltas ?> respuesta(s) son de personas fuera de la lista: están en la pestaña Respuestas.</p><?php endif; ?>
     <?php endif; ?>
+
+  <?php elseif ($vista === 'contenido'): ?>
+
+    <?php
+      // Si hubo un error, se muestra lo que se escribió (no lo guardado).
+      $v = static fn(string $k, string $actual): string => e(isset($_POST[$k]) ? (string) $_POST[$k] : $actual);
+      $c = contenido();
+      $fechaDt = new DateTimeImmutable($c['fecha']['iso']);
+      $fechaDt = $fechaDt->setTimezone(new DateTimeZone('America/Santiago'));
+      $cierreDt = (new DateTimeImmutable($c['rsvp']['cierreIso']))->setTimezone(new DateTimeZone('America/Santiago'));
+      $lineasPrograma = implode("\n", array_map(static fn($p) => "{$p['hora']} | {$p['titulo']} | " . ($p['detalle'] ?? '') . " | {$p['icono']}", $c['programa']));
+      $lineasMenu = implode("\n", array_map(static fn($t) => "{$t['tiempo']} | {$t['plato']}" . (!empty($t['opciones']) ? " | {$t['opciones']}" : ''), $c['menu']['tiempos']));
+      $rf = reglas_fotos();
+      $dtl = static fn(?string $s): string => $s ? str_replace(' ', 'T', substr($s, 0, 16)) : '';
+      $tr = $c['regalo']['transferencia'];
+      $pend = static fn(string $x): string => $x === 'PENDIENTE' ? '' : $x;
+    ?>
+    <p class="sub" style="margin:0 0 16px">Lo que cambies aquí se ve en la invitación al tiro, sin tocar código.</p>
+
+    <form method="post" class="contenido">
+      <input type="hidden" name="accion" value="contenido">
+      <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
+
+      <section class="tarjeta">
+        <h3>Fecha</h3>
+        <div class="fila3">
+          <div><label class="e" for="fd">Día</label><input id="fd" type="date" name="fecha_dia" value="<?= $v('fecha_dia', $fechaDt->format('Y-m-d')) ?>" required></div>
+          <div><label class="e" for="fh">Hora</label><input id="fh" type="time" name="fecha_hora" value="<?= $v('fecha_hora', $fechaDt->format('H:i')) ?>" required></div>
+          <div><label class="e" for="rc">Confirmar hasta</label><input id="rc" type="date" name="rsvp_cierre" value="<?= $v('rsvp_cierre', $cierreDt->format('Y-m-d')) ?>" required></div>
+        </div>
+        <label class="check"><input type="checkbox" name="fecha_confirmada" <?= ($_POST ? isset($_POST['fecha_confirmada']) : $c['fecha']['confirmada']) ? 'checked' : '' ?>> El día ya está confirmado <span class="sub">(si no, la invitación dice "fecha estimada")</span></label>
+        <p class="sub" style="margin:6px 0 0">Pasada la fecha "Confirmar hasta", el formulario se cierra solo.</p>
+      </section>
+
+      <section class="tarjeta">
+        <h3>Lugar</h3>
+        <div class="fila">
+          <div><label class="e" for="ln">Nombre</label><input id="ln" name="lugar_nombre" value="<?= $v('lugar_nombre', $c['lugar']['nombre']) ?>"></div>
+          <div><label class="e" for="lc">Ciudad / comuna</label><input id="lc" name="lugar_ciudad" value="<?= $v('lugar_ciudad', $c['lugar']['ciudad']) ?>"></div>
+        </div>
+        <label class="e" for="ld">Dirección</label><input id="ld" name="lugar_direccion" value="<?= $v('lugar_direccion', $c['lugar']['direccion']) ?>">
+        <label class="e" for="lm">Link de Google Maps <span class="sub" style="text-transform:none;letter-spacing:0">(en Maps: Compartir › Copiar vínculo)</span></label>
+        <input id="lm" name="lugar_maps" value="<?= $v('lugar_maps', $c['lugar']['mapsUrl']) ?>" placeholder="https://maps.app.goo.gl/…">
+      </section>
+
+      <section class="tarjeta">
+        <h3>Textos</h3>
+        <label class="e" for="an">Invitación (bajo "Nos casamos")</label>
+        <textarea id="an" name="anuncio" rows="3"><?= $v('anuncio', $c['textos']['anuncio']) ?></textarea>
+        <label class="e" for="ve">Dress code</label>
+        <input id="ve" name="vestimenta" value="<?= $v('vestimenta', $c['vestimenta']['nota']) ?>">
+        <label class="e" for="wa">WhatsApp de los novios <span class="sub" style="text-transform:none;letter-spacing:0">(con 56 adelante, sin +)</span></label>
+        <input id="wa" name="whatsapp" inputmode="numeric" value="<?= $v('whatsapp', $c['whatsapp']['numero']) ?>">
+      </section>
+
+      <section class="tarjeta">
+        <h3>Programa</h3>
+        <p class="sub" style="margin:0 0 6px">Una línea por momento: <b>hora | título | detalle | ícono</b>. Íconos: copas, anillos, arco, camara, cubiertos, torta, musica, destello.</p>
+        <textarea name="programa" rows="8" class="mono"><?= $v('programa', $lineasPrograma) ?></textarea>
+      </section>
+
+      <section class="tarjeta">
+        <h3>Menú</h3>
+        <p class="sub" style="margin:0 0 6px">Una línea por tiempo: <b>tiempo | plato | opción</b> (la opción es opcional, ej. "Vegetariana: …").</p>
+        <textarea name="menu" rows="6" class="mono"><?= $v('menu', $lineasMenu) ?></textarea>
+        <label class="e" for="mn">Nota al pie del menú</label>
+        <input id="mn" name="menu_nota" value="<?= $v('menu_nota', $c['menu']['nota']) ?>">
+      </section>
+
+      <section class="tarjeta">
+        <h3>Regalo</h3>
+        <label class="e" for="rt">Texto</label>
+        <textarea id="rt" name="regalo_texto" rows="3"><?= $v('regalo_texto', $c['regalo']['texto']) ?></textarea>
+        <p class="sub" style="margin:10px 0 0">Datos para transferir. Mientras falte alguno, la invitación dice "estarán aquí muy pronto".</p>
+        <div class="fila">
+          <div><label class="e" for="t1">Titular</label><input id="t1" name="tr_titular" value="<?= $v('tr_titular', $pend($tr['titular'])) ?>"></div>
+          <div><label class="e" for="t2">RUT</label><input id="t2" name="tr_rut" value="<?= $v('tr_rut', $pend($tr['rut'])) ?>" placeholder="12.345.678-9"></div>
+        </div>
+        <div class="fila">
+          <div><label class="e" for="t3">Banco</label><input id="t3" name="tr_banco" value="<?= $v('tr_banco', $pend($tr['banco'])) ?>"></div>
+          <div><label class="e" for="t4">Tipo de cuenta</label><input id="t4" name="tr_tipoCuenta" value="<?= $v('tr_tipoCuenta', $pend($tr['tipoCuenta'])) ?>" placeholder="Cuenta corriente / vista / RUT"></div>
+        </div>
+        <div class="fila">
+          <div><label class="e" for="t5">N° de cuenta</label><input id="t5" name="tr_numero" value="<?= $v('tr_numero', $pend($tr['numero'])) ?>"></div>
+          <div><label class="e" for="t6">Correo</label><input id="t6" name="tr_correo" value="<?= $v('tr_correo', $pend($tr['correo'])) ?>"></div>
+        </div>
+      </section>
+
+      <section class="tarjeta">
+        <h3>Subida de fotos</h3>
+        <div class="fila">
+          <div><label class="e" for="fa">Se abre</label><input id="fa" type="datetime-local" name="fotos_desde" value="<?= $v('fotos_desde', $dtl($rf['desde'])) ?>"></div>
+          <div><label class="e" for="fc">Se cierra</label><input id="fc" type="datetime-local" name="fotos_hasta" value="<?= $v('fotos_hasta', $dtl($rf['hasta'])) ?>"></div>
+        </div>
+        <p class="sub" style="margin:6px 0 0">Hora de Chile. Fuera de ese rango la sección "Comparte tus fotos" avisa que se abrirá o que ya cerró.</p>
+      </section>
+
+      <p class="guardar"><button class="principal" type="submit">Guardar cambios</button></p>
+    </form>
 
   <?php elseif ($vista === 'regalos'): ?>
 

@@ -101,6 +101,14 @@ function preparar_tablas(PDO $pdo): void
         creado DATETIME NOT NULL
       ){$fin}");
 
+    // Ajustes editables desde el panel (contenido de la invitación, fechas
+    // de la subida de fotos). Una fila por clave, valor en JSON.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS ajustes (
+        clave VARCHAR(60) NOT NULL PRIMARY KEY,
+        valor TEXT NOT NULL,
+        actualizado DATETIME NOT NULL
+      ){$fin}");
+
     // Avisos de regalo: el invitado transfiere por su banco y deja aquí su
     // nombre, el monto (opcional) y un mensaje. La página no maneja dinero;
     // esto es solo para que los novios sepan a quién agradecer.
@@ -179,7 +187,8 @@ function invitado_publico(array $inv): array
  */
 function reglas_fotos(): array
 {
-    $f = config()['fotos'] ?? [];
+    // Las fechas pueden venir del panel (ajuste 'fotos'); si no, de config.php.
+    $f = array_merge(config()['fotos'] ?? [], array_filter(ajuste('fotos') ?? []));
     return [
         'desde'        => $f['desde'] ?? null,
         'hasta'        => $f['hasta'] ?? null,
@@ -353,4 +362,51 @@ function dentro_del_limite(string $tipo, int $maximo, int $minutos): bool
     }
     db()->prepare('INSERT INTO intentos (ip_hash, creado) VALUES (?, ?)')->execute([$clave, ahora()]);
     return true;
+}
+
+/* ───────────────────────────────────────────────────────────── ajustes ── */
+
+function ajuste(string $clave): ?array
+{
+    $q = db()->prepare('SELECT valor FROM ajustes WHERE clave = ?');
+    $q->execute([$clave]);
+    $v = $q->fetchColumn();
+    $d = is_string($v) ? json_decode($v, true) : null;
+    return is_array($d) ? $d : null;
+}
+
+function guardar_ajuste(string $clave, array $valor): void
+{
+    $json = json_encode($valor, JSON_UNESCAPED_UNICODE);
+    $pdo = db();
+    $pdo->prepare('DELETE FROM ajustes WHERE clave = ?')->execute([$clave]);
+    $pdo->prepare('INSERT INTO ajustes (clave, valor, actualizado) VALUES (?, ?, ?)')->execute([$clave, $json, ahora()]);
+}
+
+/**
+ * Contenido de la invitación: lo que viene en el código (contenido-base.json,
+ * generado desde event.config.ts) con encima lo editado en el panel.
+ * Las listas (programa, menú) se reemplazan enteras, no elemento a elemento.
+ */
+function contenido(): array
+{
+    $base = json_decode((string) @file_get_contents(__DIR__ . '/contenido-base.json'), true) ?: [];
+    $cambios = ajuste('contenido') ?? [];
+    $todo = array_replace_recursive($base, $cambios);
+    if (isset($cambios['programa'])) $todo['programa'] = $cambios['programa'];
+    if (isset($cambios['menu']['tiempos'])) $todo['menu']['tiempos'] = $cambios['menu']['tiempos'];
+    return $todo;
+}
+
+/** "2027-01-16" + "18:00" → ISO con la zona horaria de Chile de ese día. */
+function iso_chile(string $fecha, string $hora): ?string
+{
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha) || !preg_match('/^\d{2}:\d{2}$/', $hora)) {
+        return null;
+    }
+    try {
+        return (new DateTimeImmutable("{$fecha} {$hora}:00", new DateTimeZone('America/Santiago')))->format('Y-m-d\TH:i:sP');
+    } catch (Throwable) {
+        return null;
+    }
 }

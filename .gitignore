@@ -34,3 +34,5 @@ CLAVE-PANEL.txt
 despliegue/
 # Fotos que suben los invitados (en Hostinger quedan fuera de public_html).
 fotos-invitados/
+# Se genera solo desde event.config.ts antes de dev/build (scripts/contenido-base.mjs).
+public/api/contenido-base.json
