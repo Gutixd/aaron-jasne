@@ -28,6 +28,7 @@ export function mensajeConfirmacion(r: {
   acompanantes: number;
   telefono?: string;
   alimentacion?: string;
+  canciones?: string;
   mensaje?: string;
 }) {
   const saludo = `Hola ${evento.pareja.uno} y ${evento.pareja.dos} 💍`;
@@ -55,6 +56,7 @@ export function mensajeConfirmacion(r: {
     `Soy ${r.nombre} y confirmo mi asistencia a su celebración de ${fecha}.`,
     compania,
     ...(r.alimentacion ? [`Alimentación: ${r.alimentacion}`] : []),
+    ...(r.canciones ? [`Una canción que no puede faltar: ${r.canciones}`] : []),
     ...(r.telefono ? [`Mi teléfono: ${r.telefono}`] : []),
     ...(r.mensaje ? ["", r.mensaje] : []),
     "",

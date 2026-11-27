@@ -45,11 +45,24 @@ fecha el formulario se cierra solo.
 
 ---
 
-## Confirmaciones
+## Lista de invitados y confirmaciones
 
-El formulario guarda cada respuesta en MySQL (`public/api/confirmar.php`) y
-aparece en el panel `/panel/`, con totales, filtros, búsqueda y descarga a
-Excel. Si el servidor fallara, el invitado recibe un enlace a WhatsApp con su
+En el panel `/panel/` › **Invitados** se carga la lista: cada fila es una
+invitación (persona o familia) con su saludo, los nombres con que se la
+puede buscar y sus cupos. Se agregan uno por uno o pegando una lista
+(`saludo | nombres para buscar | cupos | teléfono`, una línea cada uno).
+
+En la invitación hay **un solo link para todos**. El invitado escribe su
+nombre y apellido; si está en la lista se le saluda ("¡Hola, Familia
+Pérez!") y puede confirmar hasta sus cupos. Si no está, se le ofrece
+escribir por WhatsApp. Si vuelve a responder, su respuesta se reemplaza.
+Mientras la lista esté vacía, cualquiera puede confirmar.
+
+El panel muestra quién asiste, quién no y quién falta por responder (con
+botón para mandarle la invitación por WhatsApp), las canciones sugeridas y
+las restricciones de comida, y lo descarga todo a Excel.
+
+Cada respuesta se guarda en MySQL (`public/api/confirmar.php`). Si el servidor fallara, el invitado recibe un enlace a WhatsApp con su
 respuesta ya escrita, para que nunca quede atascado.
 
 ### Publicar en Hostinger
@@ -68,16 +81,16 @@ Las tablas se crean solas la primera vez. `config.php` nunca va a git.
 
 ```
 src/
-  config/event.config.ts   ← todo el contenido
+  config/event.config.ts   ← todo el contenido (incluye el menú)
   lib/          calendar · whatsapp · analytics
   components/   Sobre · Musica · Foto · Ornamentos · Iconos · Aparecer · Confeti
     secciones/  Portada · Fecha · ConAmor · Programa · DressCode
-                Cita · Lugar · Galeria · Confirmar · Cierre
+                Menu · Cita · Lugar · Galeria · Confirmar · Cierre
 public/
-  api/          confirmar.php · _base.php        (PHP)
+  api/          buscar.php · confirmar.php · _base.php  (PHP)
   panel/        index.php · exportar.php         (PHP)
   fotos/  music/
-servidor/       esquemas SQL, plantilla de config, herramientas locales
+servidor/       plantilla de config y herramientas locales (las tablas se crean solas)
 ```
 
 ## Accesibilidad y rendimiento

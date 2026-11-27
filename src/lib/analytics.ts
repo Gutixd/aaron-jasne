@@ -43,6 +43,8 @@ export type EventoMedido =
   | "rsvp_iniciado"
   | "rsvp_completado"
   | "rsvp_declinado"
+  | "invitado_encontrado"
+  | "invitado_no_encontrado"
   | "clic_whatsapp"
   | "clic_maps"
   | "clic_calendario"

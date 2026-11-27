@@ -50,6 +50,7 @@ if ($telefono !== null && !preg_match('/^[\d\s+().\-]{6,40}$/', $telefono)) {
     responder_json(['ok' => false, 'error' => 'El teléfono no parece válido.'], 422);
 }
 $alimentacion = $asiste ? limpiar_texto($d['alimentacion'] ?? null, 300) : null;
+$canciones    = limpiar_texto($d['canciones'] ?? null, 500);
 $mensaje      = limpiar_texto($d['mensaje'] ?? null, 800);
 
 try {
@@ -60,11 +61,32 @@ try {
         responder_json(['ok' => false, 'error' => 'Demasiados envíos seguidos. Espera unos minutos.'], 429);
     }
 
-    db()->prepare(
+    // Con lista de invitados, el servidor vuelve a buscar el nombre: no se
+    // confía en lo que diga el navegador sobre quién es ni cuántos cupos tiene.
+    $invitadoId = null;
+    if (hay_lista()) {
+        $r = buscar_invitado($nombre);
+        if (empty($r['invitado'])) {
+            responder_json(['ok' => false, 'error' => 'No encontramos tu nombre en la lista de invitados.'], 422);
+        }
+        $invitadoId = (int) $r['invitado']['id'];
+        if ($asiste && 1 + $acompanantes > (int) $r['invitado']['cupos']) {
+            responder_json(['ok' => false, 'error' => 'Son más personas que los cupos de tu invitación.'], 422);
+        }
+    }
+
+    $pdo = db();
+    $pdo->beginTransaction();
+    if ($invitadoId !== null) {
+        // Si ya había respondido, la nueva respuesta reemplaza a la anterior.
+        $pdo->prepare('DELETE FROM confirmaciones WHERE invitado_id = ?')->execute([$invitadoId]);
+    }
+    $pdo->prepare(
         'INSERT INTO confirmaciones
-           (nombre, telefono, asiste, acompanantes, alimentacion, mensaje, creado)
-         VALUES (?, ?, ?, ?, ?, ?, ?)'
-    )->execute([$nombre, $telefono, $asiste ? 1 : 0, $acompanantes, $alimentacion, $mensaje, ahora()]);
+           (invitado_id, nombre, telefono, asiste, acompanantes, alimentacion, canciones, mensaje, creado)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    )->execute([$invitadoId, $nombre, $telefono, $asiste ? 1 : 0, $acompanantes, $alimentacion, $canciones, $mensaje, ahora()]);
+    $pdo->commit();
 } catch (Throwable $e) {
     error_log('[confirmar] ' . $e->getMessage());
     responder_json(['ok' => false, 'error' => 'No pudimos guardar tu respuesta. Inténtalo de nuevo.'], 500);

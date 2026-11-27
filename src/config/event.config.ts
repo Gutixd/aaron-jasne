@@ -39,8 +39,8 @@ const programa: ItemPrograma[] = [
   { hora: "02:00", titulo: "Fin de la noche", icono: "destello" },
 ];
 
-/** Seis huecos para la galería: public/fotos/galeria-1.jpg … galeria-6.jpg */
-const galeria = [1, 2, 3, 4, 5, 6].map((n) => ({
+/** Galería: public/fotos/galeria-1.jpg … galeria-4.jpg (agregar números para más fotos) */
+const galeria = [1, 2, 3, 4].map((n) => ({
   src: `/fotos/galeria-${n}.jpg`,
   alt: `Aaron y Jasne ${n}`,
 }));
@@ -119,6 +119,21 @@ export const evento = {
     nota: "Formal. El blanco queda reservado para la novia.",
     /** Colores sugeridos, de claro a oscuro. */
     paleta: ["#f1ede4", "#a8ad95", "#6f7259", "#a89688", "#3d3f31"],
+  },
+
+  /**
+   * FICTICIO — menú de ejemplo. `opciones` es una alternativa (ej.
+   * vegetariana) que se muestra bajo el plato.
+   */
+  menu: {
+    nota: "Si tienes alguna restricción alimentaria, cuéntanos al confirmar.",
+    tiempos: [
+      { tiempo: "Cóctel", plato: "Bocados fríos y calientes, espumante y jugos naturales" },
+      { tiempo: "Entrada", plato: "Carpaccio de res con rúcula y parmesano", opciones: "Vegetariana: burrata con tomates asados" },
+      { tiempo: "Fondo", plato: "Filete al vino tinto con papas rústicas", opciones: "Vegetariana: risotto de hongos" },
+      { tiempo: "Postre", plato: "Torta de novios y mesa de dulces" },
+      { tiempo: "Trasnoche", plato: "Completos y sándwiches para recargar energías" },
+    ] as { tiempo: string; plato: string; opciones?: string }[],
   },
 
   // FICTICIO — texto de ejemplo.

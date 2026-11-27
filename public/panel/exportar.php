@@ -1,5 +1,5 @@
 <?php
-/** Descarga todas las confirmaciones en CSV (abre bien en Excel en español). */
+/** Descarga la lista de invitados y sus respuestas en CSV (abre bien en Excel en español). */
 
 declare(strict_types=1);
 
@@ -10,13 +10,23 @@ if (!sesion_activa()) {
     exit;
 }
 
+// Una fila por invitado de la lista (con su respuesta, si la hay) y al
+// final las respuestas de gente que no está en la lista.
 $filas = db()->query(
-    'SELECT nombre, telefono, asiste, acompanantes, alimentacion, mensaje, creado
-     FROM confirmaciones ORDER BY creado DESC'
+    'SELECT i.nombre AS invitado, i.cupos, c.nombre, c.telefono, c.asiste, c.acompanantes,
+            c.alimentacion, c.canciones, c.mensaje, c.creado
+     FROM invitados i LEFT JOIN confirmaciones c ON c.invitado_id = i.id
+     ORDER BY i.nombre'
 )->fetchAll();
+$sueltas = db()->query(
+    'SELECT NULL AS invitado, NULL AS cupos, nombre, telefono, asiste, acompanantes,
+            alimentacion, canciones, mensaje, creado
+     FROM confirmaciones WHERE invitado_id IS NULL ORDER BY creado DESC'
+)->fetchAll();
+$filas = array_merge($filas, $sueltas);
 
 header('Content-Type: text/csv; charset=utf-8');
-header('Content-Disposition: attachment; filename="confirmaciones-aaron-jasne.csv"');
+header('Content-Disposition: attachment; filename="invitados-aaron-jasne.csv"');
 
 /**
  * Excel ejecuta como fórmula cualquier celda que empiece con = + - @. Un
@@ -31,16 +41,19 @@ $celda = static function (mixed $v): string {
 $out = fopen('php://output', 'w');
 fwrite($out, "\xEF\xBB\xBF"); // BOM: sin él Excel rompe los acentos
 // Punto y coma: es el separador que espera Excel con configuración regional chilena.
-fputcsv($out, ['Nombre', 'Teléfono', 'Asiste', 'Acompañantes', 'Personas', 'Alimentación', 'Mensaje', 'Fecha'], ';');
+fputcsv($out, ['Invitado', 'Cupos', 'Estado', 'Respondió como', 'Teléfono', 'Personas', 'Alimentación', 'Canciones', 'Mensaje', 'Fecha'], ';');
 foreach ($filas as $f) {
-    $asiste = (int) $f['asiste'] === 1;
+    $respondio = $f['creado'] !== null;
+    $asiste = $respondio && (int) $f['asiste'] === 1;
     fputcsv($out, [
+        $celda($f['invitado'] ?? '(fuera de la lista)'),
+        $f['cupos'] ?? '',
+        !$respondio ? 'Sin responder' : ($asiste ? 'Asiste' : 'No asiste'),
         $celda($f['nombre']),
         $celda($f['telefono']),
-        $asiste ? 'Sí' : 'No',
-        $asiste ? $f['acompanantes'] : 0,
         $asiste ? 1 + (int) $f['acompanantes'] : 0,
         $celda($f['alimentacion']),
+        $celda($f['canciones']),
         $celda($f['mensaje']),
         $f['creado'],
     ], ';');

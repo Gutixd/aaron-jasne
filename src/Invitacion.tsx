@@ -8,6 +8,7 @@ import Portada from "./components/secciones/Portada";
 import Fecha from "./components/secciones/Fecha";
 import ConAmor from "./components/secciones/ConAmor";
 import Programa from "./components/secciones/Programa";
+import Menu from "./components/secciones/Menu";
 import DressCode from "./components/secciones/DressCode";
 import Cita from "./components/secciones/Cita";
 import Lugar from "./components/secciones/Lugar";
@@ -62,6 +63,7 @@ export default function Invitacion() {
         <Fecha />
         <ConAmor />
         <Programa />
+        <Menu />
         <DressCode />
         <Cita />
         <Lugar />

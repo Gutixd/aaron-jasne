@@ -49,41 +49,133 @@ function db(): PDO
 }
 
 /**
- * Crea las tablas si no existen. Así no hace falta abrir phpMyAdmin para
- * instalar: basta con crear la base vacía y completar config.php. Son dos
- * sentencias "IF NOT EXISTS" que no hacen nada cuando las tablas ya están.
+ * Crea las tablas si no existen y agrega columnas nuevas a bases antiguas.
+ * Así no hace falta abrir phpMyAdmin para instalar ni para actualizar:
+ * basta con crear la base vacía y completar config.php.
  */
 function preparar_tablas(PDO $pdo): void
 {
-    $motor = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME);
-    $archivo = __DIR__ . '/../../servidor/schema.' . ($motor === 'sqlite' ? 'sqlite' : 'mysql') . '.sql';
-    if (is_file($archivo)) {
-        $pdo->exec(file_get_contents($archivo));
-        return;
-    }
+    $sqlite = $pdo->getAttribute(PDO::ATTR_DRIVER_NAME) === 'sqlite';
+    $id     = $sqlite ? 'INTEGER PRIMARY KEY AUTOINCREMENT' : 'INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY';
+    $fin    = $sqlite ? '' : ' ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
 
-    // En el servidor solo viaja public/, así que el esquema MySQL va también aquí.
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS confirmaciones (
-           id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-           nombre VARCHAR(120) NOT NULL,
-           telefono VARCHAR(40) NULL,
-           asiste TINYINT(1) NOT NULL,
-           acompanantes TINYINT UNSIGNED NOT NULL DEFAULT 0,
-           alimentacion VARCHAR(300) NULL,
-           mensaje VARCHAR(800) NULL,
-           creado DATETIME NOT NULL,
-           INDEX idx_creado (creado)
-         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-    );
-    $pdo->exec(
-        'CREATE TABLE IF NOT EXISTS intentos (
-           id INT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-           ip_hash CHAR(64) NOT NULL,
-           creado DATETIME NOT NULL,
-           INDEX idx_ip (ip_hash, creado)
-         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci'
-    );
+    // Lista de invitados que cargan los novios en el panel. Una fila puede
+    // ser una persona o una familia: `nombre` es como se le saluda y
+    // `busqueda` los nombres con que puede buscarse (uno por línea o coma).
+    $pdo->exec("CREATE TABLE IF NOT EXISTS invitados (
+        id {$id},
+        nombre VARCHAR(120) NOT NULL,
+        busqueda VARCHAR(600) NOT NULL DEFAULT '',
+        cupos TINYINT UNSIGNED NOT NULL DEFAULT 1,
+        telefono VARCHAR(40) NULL,
+        creado DATETIME NOT NULL
+      ){$fin}");
+
+    // Una fila por respuesta. Con lista de invitados, cada invitado tiene
+    // como máximo una: si vuelve a responder, se reemplaza.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS confirmaciones (
+        id {$id},
+        nombre VARCHAR(120) NOT NULL,
+        telefono VARCHAR(40) NULL,
+        asiste TINYINT(1) NOT NULL,
+        acompanantes TINYINT UNSIGNED NOT NULL DEFAULT 0,
+        alimentacion VARCHAR(300) NULL,
+        mensaje VARCHAR(800) NULL,
+        creado DATETIME NOT NULL
+      ){$fin}");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS intentos (
+        id {$id},
+        ip_hash CHAR(64) NOT NULL,
+        creado DATETIME NOT NULL
+      ){$fin}");
+
+    // Columnas que llegaron después: se agregan si faltan.
+    asegurar_columna($pdo, $sqlite, 'confirmaciones', 'invitado_id', 'INT NULL');
+    asegurar_columna($pdo, $sqlite, 'confirmaciones', 'canciones', 'VARCHAR(500) NULL');
+}
+
+function asegurar_columna(PDO $pdo, bool $sqlite, string $tabla, string $columna, string $tipo): void
+{
+    if ($sqlite) {
+        $cols = array_column($pdo->query("PRAGMA table_info({$tabla})")->fetchAll(), 'name');
+        $existe = in_array($columna, $cols, true);
+    } else {
+        $q = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS
+                            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+        $q->execute([$tabla, $columna]);
+        $existe = (int) $q->fetchColumn() > 0;
+    }
+    if (!$existe) {
+        $pdo->exec("ALTER TABLE {$tabla} ADD COLUMN {$columna} {$tipo}");
+    }
+}
+
+/* ──────────────────────────────────────────────── lista de invitados ── */
+
+/** Minúsculas, sin tildes ni signos y con espacios simples: "José  Pérez." → "jose perez". */
+function normalizar_nombre(string $t): string
+{
+    $t = mb_strtolower($t);
+    $t = strtr($t, ['á' => 'a', 'à' => 'a', 'ä' => 'a', 'â' => 'a', 'é' => 'e', 'è' => 'e', 'ë' => 'e', 'ê' => 'e',
+                    'í' => 'i', 'ì' => 'i', 'ï' => 'i', 'î' => 'i', 'ó' => 'o', 'ò' => 'o', 'ö' => 'o', 'ô' => 'o',
+                    'ú' => 'u', 'ù' => 'u', 'ü' => 'u', 'û' => 'u', 'ñ' => 'n', 'ç' => 'c']);
+    $t = preg_replace('/[^a-z0-9 ]+/', ' ', $t) ?? '';
+    return trim(preg_replace('/\s+/', ' ', $t) ?? '');
+}
+
+/** Palabras que no ayudan a distinguir a nadie. */
+function palabras_nombre(string $t): array
+{
+    $vacias = ['de', 'del', 'la', 'las', 'los', 'y', 'e', 'familia', 'flia', 'sr', 'sra', 'srta'];
+    return array_values(array_diff(array_filter(explode(' ', normalizar_nombre($t)), 'strlen'), $vacias));
+}
+
+/** ¿Hay invitados cargados? Sin lista, el formulario funciona abierto. */
+function hay_lista(): bool
+{
+    return (int) db()->query('SELECT COUNT(*) FROM invitados')->fetchColumn() > 0;
+}
+
+/**
+ * Busca al invitado por lo que escribió. Coincide si TODAS las palabras
+ * escritas (al menos dos: nombre y apellido) están en el nombre del
+ * invitado o en alguno de sus nombres de búsqueda, en cualquier orden.
+ * "juan perez" encuentra a "Juan Carlos Pérez Soto".
+ *
+ * Devuelve ['invitado' => fila] si hay exactamente uno, ['varios' => true]
+ * si hay más de uno, o [] si no hay ninguno.
+ */
+function buscar_invitado(string $escrito): array
+{
+    $buscadas = array_unique(palabras_nombre($escrito));
+    if (count($buscadas) < 2) {
+        return ['corto' => true];
+    }
+    $hallados = [];
+    foreach (db()->query('SELECT * FROM invitados')->fetchAll() as $inv) {
+        $variantes = array_merge([$inv['nombre']], preg_split('/[,
+;]+/', (string) $inv['busqueda']) ?: []);
+        foreach ($variantes as $v) {
+            $palabras = palabras_nombre($v);
+            if ($palabras && !array_diff($buscadas, $palabras)) {
+                $hallados[$inv['id']] = $inv;
+                break;
+            }
+        }
+    }
+    if (count($hallados) === 1) {
+        return ['invitado' => array_values($hallados)[0]];
+    }
+    return $hallados ? ['varios' => true] : [];
+}
+
+/** Respuesta ya guardada de un invitado, si existe. */
+function respuesta_de(int $invitadoId): ?array
+{
+    $q = db()->prepare('SELECT * FROM confirmaciones WHERE invitado_id = ? ORDER BY creado DESC LIMIT 1');
+    $q->execute([$invitadoId]);
+    return $q->fetch() ?: null;
 }
 
 /** Fecha y hora de Chile en formato que entienden MySQL y SQLite. */

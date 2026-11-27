@@ -10,8 +10,26 @@ import { medir } from "@/lib/analytics";
 type Asistencia = "si" | "no";
 type Estado = "formulario" | "enviando" | "listo";
 
-/** Endpoint PHP en el mismo dominio. En local lo atiende el proxy de Vite. */
+/** Endpoints PHP en el mismo dominio. En local los atiende el proxy de Vite. */
 const API_CONFIRMAR = "/api/confirmar.php";
+const API_BUSCAR = "/api/buscar.php";
+
+type Invitado = { nombre: string; cupos: number; previa: { asiste: boolean; personas: number } | null };
+
+/**
+ * Paso del formulario:
+ * - "nombre": solo pide el nombre y lo busca en la lista.
+ * - "abierto": no hay lista cargada; confirma cualquiera (como antes).
+ * - "invitado": está en la lista; se le saluda y se limitan sus cupos.
+ * - "no_esta" / "varios" / "corto": no se pudo identificar.
+ */
+type Paso =
+  | { tipo: "nombre" }
+  | { tipo: "abierto" }
+  | { tipo: "invitado"; invitado: Invitado }
+  | { tipo: "no_esta" | "varios" | "corto" };
+
+const MAX_ABIERTO = 10;
 
 type Datos = {
   nombre: string;
@@ -19,6 +37,7 @@ type Datos = {
   asistencia: Asistencia | null;
   acompanantes: number;
   alimentacion: string;
+  canciones: string;
   mensaje: string;
 };
 
@@ -28,6 +47,7 @@ const inicial: Datos = {
   asistencia: null,
   acompanantes: 0,
   alimentacion: "",
+  canciones: "",
   mensaje: "",
 };
 
@@ -38,6 +58,7 @@ const textoRespuesta = (d: Datos) =>
     acompanantes: d.asistencia === "si" ? d.acompanantes : 0,
     telefono: d.telefono.trim(),
     alimentacion: d.asistencia === "si" ? d.alimentacion.trim() : "",
+    canciones: d.canciones.trim(),
     mensaje: d.mensaje.trim(),
   });
 
@@ -54,6 +75,8 @@ export default function Confirmar() {
   const [porWhatsapp, setPorWhatsapp] = useState(false);
   const [trampa, setTrampa] = useState("");
   const [iniciado, setIniciado] = useState(false);
+  const [paso, setPaso] = useState<Paso>({ tipo: "nombre" });
+  const [buscando, setBuscando] = useState(false);
 
   const set = <K extends keyof Datos>(k: K, v: Datos[K]) => {
     setD((prev) => ({ ...prev, [k]: v }));
@@ -65,11 +88,57 @@ export default function Confirmar() {
 
   const cerrado = Date.now() > new Date(evento.rsvp.cierreIso).getTime();
   const asiste = d.asistencia === "si";
+  const invitado = paso.tipo === "invitado" ? paso.invitado : null;
+  // Acompañantes posibles: los cupos del invitado menos él, o 10 sin lista.
+  const maxAcompanantes = invitado ? invitado.cupos - 1 : MAX_ABIERTO;
+  const formularioAbierto = paso.tipo === "abierto" || paso.tipo === "invitado";
+
+  const buscar = async () => {
+    setError(null);
+    const nombre = d.nombre.trim();
+    if (nombre.split(/\s+/).length < 2) return setError("Escribe tu nombre y apellido.");
+    setBuscando(true);
+    try {
+      const r = await fetch(API_BUSCAR, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre }),
+      });
+      const json = (await r.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+        modo?: string;
+        encontrado?: boolean;
+        motivo?: string;
+        invitado?: Invitado;
+      } | null;
+      if (r.status === 422 || r.status === 429) return setError(json?.error ?? "Revisa tu nombre.");
+      if (!r.ok || !json?.ok || json.modo === "abierto") {
+        // Sin lista (o sin servidor) se deja confirmar igual; si el envío
+        // también falla, se ofrece WhatsApp.
+        return setPaso({ tipo: "abierto" });
+      }
+      if (json.encontrado && json.invitado) {
+        const inv = json.invitado;
+        medir("invitado_encontrado", { cupos: inv.cupos });
+        setD((prev) => ({ ...prev, acompanantes: Math.min(prev.acompanantes, inv.cupos - 1) }));
+        return setPaso({ tipo: "invitado", invitado: inv });
+      }
+      medir("invitado_no_encontrado");
+      setPaso({ tipo: json.motivo === "varios" ? "varios" : json.motivo === "corto" ? "corto" : "no_esta" });
+    } catch {
+      setPaso({ tipo: "abierto" });
+    } finally {
+      setBuscando(false);
+    }
+  };
 
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setRespaldo(false);
+
+    if (!formularioAbierto) return void (await buscar());
 
     const nombre = d.nombre.trim();
     if (nombre.length < 2) return setError("Escribe tu nombre completo.");
@@ -86,6 +155,7 @@ export default function Confirmar() {
           asiste,
           acompanantes: asiste ? d.acompanantes : 0,
           alimentacion: asiste ? d.alimentacion.trim() : "",
+          canciones: d.canciones.trim(),
           mensaje: d.mensaje.trim(),
           sitio: trampa,
         }),
@@ -135,17 +205,81 @@ export default function Confirmar() {
                 : `Te agradeceremos confirmar antes del ${evento.rsvp.cierreTexto}.`}
             </p>
 
-            <Campo etiqueta="Nombre completo" htmlFor="nombre">
+            <Campo etiqueta="Tu nombre y apellido" htmlFor="nombre">
               <input
                 id="nombre"
                 className="campo"
                 value={d.nombre}
-                onChange={(e) => set("nombre", e.target.value)}
-                placeholder="Cómo te presentamos"
+                onChange={(e) => {
+                  set("nombre", e.target.value);
+                  // Cambiar el nombre obliga a buscar de nuevo.
+                  if (paso.tipo !== "abierto" && paso.tipo !== "nombre") setPaso({ tipo: "nombre" });
+                }}
+                placeholder="Como aparece en tu invitación"
                 autoComplete="name"
                 disabled={cerrado}
               />
             </Campo>
+
+            <AnimatePresence mode="wait" initial={false}>
+              {invitado && (
+                <motion.div
+                  key="saludo"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-6 rounded-sm border border-linea bg-papel-claro/70 px-4 py-4 text-center"
+                >
+                  <p className="manuscrita text-[2rem] leading-tight text-oliva-hondo">¡Hola, {invitado.nombre}!</p>
+                  <p className="mt-1 text-[1.02rem] text-tinta">
+                    {invitado.cupos === 1
+                      ? "Tenemos un lugar reservado para ti."
+                      : `Reservamos ${invitado.cupos} lugares para ustedes.`}
+                  </p>
+                  {invitado.previa && (
+                    <p className="mt-2 text-[0.95rem] italic text-tinta-suave">
+                      Ya recibimos tu respuesta (
+                      {invitado.previa.asiste
+                        ? `${invitado.previa.personas} ${invitado.previa.personas === 1 ? "persona" : "personas"}`
+                        : "no asistirán"}
+                      ). Si confirmas de nuevo, la reemplazamos.
+                    </p>
+                  )}
+                </motion.div>
+              )}
+              {(paso.tipo === "no_esta" || paso.tipo === "varios" || paso.tipo === "corto") && (
+                <motion.p
+                  key="no-esta"
+                  role="alert"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="mt-6 border-l-2 border-dorado pl-3 text-[0.98rem] text-oliva-hondo"
+                >
+                  {paso.tipo === "varios"
+                    ? "Hay más de una invitación con ese nombre. Escribe tu nombre completo, con tus dos apellidos."
+                    : paso.tipo === "corto"
+                      ? "Escribe tu nombre y tu apellido."
+                      : "No encontramos tu nombre en la lista. Prueba escribirlo como aparece en tu invitación."}
+                  {paso.tipo === "no_esta" && hayWhatsapp() && (
+                    <a
+                      href={urlWhatsapp(
+                        `Hola, soy ${d.nombre.trim()}. Quise confirmar en la invitación pero no encontré mi nombre en la lista.`,
+                      )}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => medir("clic_whatsapp", { origen: "rsvp_no_esta" })}
+                      className="mt-1 block font-semibold underline underline-offset-4"
+                    >
+                      Escríbenos por WhatsApp
+                    </a>
+                  )}
+                </motion.p>
+              )}
+            </AnimatePresence>
+
+            {formularioAbierto && (
+            <>
 
             <Campo etiqueta="Teléfono" htmlFor="telefono" opcional>
               <input
@@ -204,19 +338,23 @@ export default function Confirmar() {
                   exit={{ opacity: 0, height: 0 }}
                   transition={{ duration: 0.45 }}
                 >
-                  <Campo etiqueta="Acompañantes" htmlFor="acompanantes">
+                  {maxAcompanantes > 0 && (
+                  <Campo etiqueta={invitado ? "¿Cuántos asisten?" : "Acompañantes"} htmlFor="acompanantes">
                     <Contador
                       valor={d.acompanantes}
+                      max={maxAcompanantes}
+                      contarTitular={!!invitado}
                       // Suma sobre el valor más reciente: dos toques rápidos
                       // antes de redibujar contaban como uno.
                       onPaso={(delta) =>
                         setD((prev) => ({
                           ...prev,
-                          acompanantes: Math.min(10, Math.max(0, prev.acompanantes + delta)),
+                          acompanantes: Math.min(maxAcompanantes, Math.max(0, prev.acompanantes + delta)),
                         }))
                       }
                     />
                   </Campo>
+                  )}
                   <Campo etiqueta="Restricciones alimentarias" htmlFor="alimentacion" opcional>
                     <input
                       id="alimentacion"
@@ -230,6 +368,18 @@ export default function Confirmar() {
               )}
             </AnimatePresence>
 
+            <Campo etiqueta="Una canción que no puede faltar" htmlFor="canciones" opcional>
+              <input
+                id="canciones"
+                className="campo"
+                value={d.canciones}
+                onChange={(e) => set("canciones", e.target.value)}
+                placeholder="Canción y artista"
+                maxLength={500}
+                disabled={cerrado}
+              />
+            </Campo>
+
             <Campo etiqueta={`Un mensaje para ${evento.pareja.uno} y ${evento.pareja.dos}`} htmlFor="mensaje" opcional>
               <textarea
                 id="mensaje"
@@ -240,6 +390,9 @@ export default function Confirmar() {
                 disabled={cerrado}
               />
             </Campo>
+
+            </>
+            )}
 
             {/* Trampa para bots: invisible para personas y lectores de pantalla. */}
             <input
@@ -275,8 +428,14 @@ export default function Confirmar() {
             )}
 
             <div className="mt-8 text-center">
-              <button type="submit" disabled={cerrado || estado === "enviando"} className={boton}>
-                {estado === "enviando" ? "Enviando…" : "Confirmar asistencia"}
+              <button type="submit" disabled={cerrado || estado === "enviando" || buscando} className={boton}>
+                {!formularioAbierto
+                  ? buscando
+                    ? "Buscando…"
+                    : "Buscar mi invitación"
+                  : estado === "enviando"
+                    ? "Enviando…"
+                    : "Confirmar asistencia"}
               </button>
             </div>
           </motion.form>
@@ -290,7 +449,9 @@ export default function Confirmar() {
 
 function Gracias({ datos, porWhatsapp }: { datos: Datos; porWhatsapp: boolean }) {
   const asiste = datos.asistencia === "si";
-  const nombrePila = datos.nombre.trim().split(" ")[0] || "";
+  const pila = datos.nombre.trim().split(/\s+/)[0] || "";
+  // "camila" → "Camila": muchos escriben su nombre en minúsculas en el celular.
+  const nombrePila = pila.charAt(0).toLocaleUpperCase("es-CL") + pila.slice(1);
 
   return (
     <motion.div
@@ -357,7 +518,22 @@ function Campo({
   );
 }
 
-function Contador({ valor, onPaso }: { valor: number; onPaso: (delta: number) => void }) {
+/**
+ * Cuenta acompañantes. Con lista de invitados muestra el total de personas
+ * (titular incluido), que es como piensa una familia: "vamos 3 de 4".
+ */
+function Contador({
+  valor,
+  max,
+  contarTitular,
+  onPaso,
+}: {
+  valor: number;
+  max: number;
+  contarTitular: boolean;
+  onPaso: (delta: number) => void;
+}) {
+  const mostrado = contarTitular ? valor + 1 : valor;
   const redondo =
     "flex h-10 w-10 items-center justify-center rounded-full border border-linea text-[1.3rem] leading-none text-oliva transition-colors hover:border-oliva disabled:opacity-30";
   return (
@@ -366,13 +542,19 @@ function Contador({ valor, onPaso }: { valor: number; onPaso: (delta: number) =>
         −
       </button>
       <span className="w-6 text-center font-serif text-[1.8rem] font-semibold leading-none text-oliva-hondo tabular-nums">
-        {valor}
+        {mostrado}
       </span>
-      <button type="button" onClick={() => onPaso(1)} disabled={valor === 10} aria-label="Agregar un acompañante" className={redondo}>
+      <button type="button" onClick={() => onPaso(1)} disabled={valor >= max} aria-label="Agregar un acompañante" className={redondo}>
         +
       </button>
       <span className="text-[1rem] italic text-tinta-suave">
-        {valor === 0 ? "Voy solo/a" : valor === 1 ? "1 persona más" : `${valor} personas más`}
+        {contarTitular
+          ? `de ${max + 1} ${max + 1 === 1 ? "persona" : "personas"}`
+          : valor === 0
+            ? "Voy solo/a"
+            : valor === 1
+              ? "1 persona más"
+              : `${valor} personas más`}
       </span>
     </div>
   );

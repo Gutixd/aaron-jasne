@@ -13,9 +13,9 @@ $sqlite = "$base/local.sqlite";
 $cfg    = "$base/config.local.php";
 $txt    = dirname($base) . '/CLAVE-PANEL.txt';
 
-$pdo = new PDO('sqlite:' . $sqlite, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-$pdo->exec(file_get_contents("$base/schema.sqlite.sql"));
-echo "Base local lista: $sqlite\n";
+// Las tablas las crea el propio backend (preparar_tablas) en la primera visita.
+touch($sqlite);
+echo "Base local: $sqlite\n";
 
 if (is_file($cfg)) {
     echo "config.local.php ya existía, no lo toco.\n";
