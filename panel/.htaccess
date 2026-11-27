@@ -1,0 +1,6 @@
+Options -Indexes
+DirectoryIndex index.php
+
+<FilesMatch "^_sesion\.php$">
+  Require all denied
+</FilesMatch>

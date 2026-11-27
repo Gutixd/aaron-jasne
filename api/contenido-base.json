@@ -1,0 +1,78 @@
+{
+  "fecha": {
+    "iso": "2027-01-15T16:00:00-03:00",
+    "confirmada": true
+  },
+  "textos": {
+    "anuncio": "Nos encantaría que nos acompañes en uno de los días más importantes de nuestras vidas y que lo celebres junto a nosotros."
+  },
+  "lugar": {
+    "nombre": "Parcela 34",
+    "direccion": "",
+    "ciudad": "Graneros",
+    "mapsUrl": "https://maps.app.goo.gl/XrdKocCUHEYDhVTQ6"
+  },
+  "whatsapp": {
+    "numero": "56978829942"
+  },
+  "programa": [
+    {
+      "hora": "15:30",
+      "titulo": "Llegada",
+      "detalle": "de los invitados",
+      "icono": "arco"
+    },
+    {
+      "hora": "16:00",
+      "titulo": "Ceremonia",
+      "icono": "anillos"
+    },
+    {
+      "hora": "Luego",
+      "titulo": "Cóctel",
+      "detalle": "de recepción",
+      "icono": "copas"
+    },
+    {
+      "hora": "Y después",
+      "titulo": "¡Fiesta!",
+      "detalle": "buffet y bar abierto",
+      "icono": "musica"
+    }
+  ],
+  "menu": {
+    "nota": "Si tienes alguna restricción alimentaria, cuéntanos al confirmar.",
+    "tiempos": [
+      {
+        "tiempo": "Cóctel de recepción",
+        "plato": "Después de la ceremonia"
+      },
+      {
+        "tiempo": "Buffet libre",
+        "plato": "Carnes, guarniciones y ensaladas"
+      },
+      {
+        "tiempo": "Bar abierto",
+        "plato": "Toda la fiesta",
+        "opciones": "¡Que se preparen los hígados!"
+      }
+    ]
+  },
+  "vestimenta": {
+    "nota": "Formal.\nLa celebración es en una parcela y la ceremonia es al aire libre: te recomendamos zapatos cómodos. Los tacos aguja no son la mejor idea para la ceremonia.\nEn la fiesta habrá pista de baile, y ahí todo bien con los zapatos."
+  },
+  "regalo": {
+    "texto": "Tu presencia es nuestro mejor regalo. Si además quieres hacernos un obsequio, puedes hacerlo por transferencia a la cuenta de Aaron.",
+    "transferencia": {
+      "titular": "Esteban Araya",
+      "rut": "16.105.609-K",
+      "banco": "Banco Edwards",
+      "tipoCuenta": "Cuenta corriente",
+      "numero": "00-310-11987-01",
+      "correo": "esteban.aaron10@gmail.com"
+    }
+  },
+  "rsvp": {
+    "cierreIso": "2026-12-15T23:59:00-03:00"
+  }
+}
