@@ -36,3 +36,5 @@ despliegue/
 fotos-invitados/
 # Se genera solo desde event.config.ts antes de dev/build (scripts/contenido-base.mjs).
 public/api/contenido-base.json
+# Datos personales de invitados: nunca a git.
+privado/
