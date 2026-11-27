@@ -91,8 +91,8 @@ export const evento = {
 
   musica: {
     src: "/music/event-song.mp3",
-    titulo: "Perfect",
-    artista: "Ed Sheeran",
+    titulo: "Love Has Found Its Way",
+    artista: "Dennis Brown",
   },
 
   programa,

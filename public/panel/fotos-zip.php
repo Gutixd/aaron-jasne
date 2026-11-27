@@ -17,8 +17,10 @@ if (!sesion_activa()) {
 const POR_PARTE = 150; // igual que FOTOS_POR_ZIP en index.php
 
 $parte = max(1, (int) ($_GET['parte'] ?? 1));
-$q = db()->prepare('SELECT archivo, autor, creado FROM fotos ORDER BY creado ASC, id ASC LIMIT ' . POR_PARTE . ' OFFSET ?');
-$q->execute([($parte - 1) * POR_PARTE]);
+$album = in_array($_GET['album'] ?? '', ['general', 'favoritas'], true) ? $_GET['album'] : null;
+$q = db()->prepare('SELECT archivo, autor, creado FROM fotos' . ($album ? ' WHERE album = ?' : '')
+    . ' ORDER BY creado ASC, id ASC LIMIT ' . POR_PARTE . ' OFFSET ?');
+$q->execute($album ? [$album, ($parte - 1) * POR_PARTE] : [($parte - 1) * POR_PARTE]);
 $fotos = $q->fetchAll();
 
 if (!$fotos) {
@@ -45,6 +47,6 @@ $zip->close();
 
 header('Content-Type: application/zip');
 header('Content-Length: ' . filesize($tmp));
-header('Content-Disposition: attachment; filename="fotos-boda-aaron-jasne-parte-' . $parte . '.zip"');
+header('Content-Disposition: attachment; filename="fotos-boda-aaron-jasne-' . ($album ?? 'todas') . '-parte-' . $parte . '.zip"');
 readfile($tmp);
 unlink($tmp);

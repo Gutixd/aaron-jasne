@@ -127,6 +127,8 @@ function preparar_tablas(PDO $pdo): void
     asegurar_columna($pdo, $sqlite, 'invitados', 'codigo', 'VARCHAR(16) NULL');
     asegurar_columna($pdo, $sqlite, 'regalos', 'agradecido', 'TINYINT(1) NOT NULL DEFAULT 0');
     asegurar_columna($pdo, $sqlite, 'invitados', 'enviado', 'TINYINT(1) NOT NULL DEFAULT 0');
+    // Dos álbumes de fotos: 'general' (todo) y 'favoritas' (solo las mejores).
+    asegurar_columna($pdo, $sqlite, 'fotos', 'album', "VARCHAR(20) NOT NULL DEFAULT 'general'");
 
     // Todo invitado tiene su código de link personal.
     foreach ($pdo->query("SELECT id FROM invitados WHERE codigo IS NULL OR codigo = ''")->fetchAll() as $f) {

@@ -60,6 +60,11 @@ export default function FotosInvitados() {
   const [estado, setEstado] = useState<Estado>("cargando");
   const [autor, setAutor] = useState("");
   const [prog, setProg] = useState<Progreso | null>(null);
+  // Dos álbumes: todo lo de la fiesta, o solo las favoritas. El QR de
+  // favoritas abre la invitación en …#favoritas y ya llega elegido.
+  const [album, setAlbum] = useState<"general" | "favoritas">(() =>
+    typeof window !== "undefined" && window.location.hash === "#favoritas" ? "favoritas" : "general",
+  );
   const entrada = useRef<HTMLInputElement>(null);
   const invitado = useInvitadoDelLink();
 
@@ -93,6 +98,7 @@ export default function FotosInvitados() {
         cuerpo.append("foto", blob, blob === a ? a.name : "foto.jpg");
         if (autor.trim()) cuerpo.append("autor", autor.trim());
         cuerpo.append("dispositivo", idDispositivo());
+        cuerpo.append("album", album);
         const r = await fetch(API, { method: "POST", body: cuerpo });
         const j = (await r.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
         if (r.ok && j?.ok) p.listas++;
@@ -116,6 +122,8 @@ export default function FotosInvitados() {
 
   return (
     <section id="fotos">
+      {/* Ancla del link/QR de favoritas: …/#favoritas baja hasta aquí. */}
+      <span id="favoritas" className="block" aria-hidden />
       <BandaOliva className="px-7 text-center text-papel-claro">
         <div className="py-10">
           <Aparecer>
@@ -141,8 +149,32 @@ export default function FotosInvitados() {
 
           {estado === "abierto" && (
             <div className="mx-auto mt-6 max-w-[18rem]">
+              <div className="mb-5 grid grid-cols-2 gap-1 rounded-sm border border-papel-claro/30 p-1" role="tablist" aria-label="Álbum">
+                {(
+                  [
+                    ["general", "Todas"],
+                    ["favoritas", "★ Favoritas"],
+                  ] as const
+                ).map(([k, txt]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    role="tab"
+                    aria-selected={album === k}
+                    disabled={subiendo}
+                    onClick={() => setAlbum(k)}
+                    className={`rotulo rounded-sm py-2.5 text-[0.66rem] transition-colors ${
+                      album === k ? "bg-papel-claro text-oliva-hondo" : "text-papel-claro/80"
+                    }`}
+                  >
+                    {txt}
+                  </button>
+                ))}
+              </div>
               <p className="text-[1.05rem] leading-[1.6] text-papel-claro/90">
-                Sube las fotos que tomaste hoy. Les llegan directo a los novios, nadie más las ve.
+                {album === "favoritas"
+                  ? "Solo tus fotos más lindas del día: las que no te puedes guardar para ti. ❤"
+                  : "Sube las fotos que tomaste hoy. Les llegan directo a los novios, nadie más las ve."}
               </p>
 
               <label htmlFor="autor-fotos" className="rotulo mt-6 block text-left text-[0.64rem] text-papel-claro/70">

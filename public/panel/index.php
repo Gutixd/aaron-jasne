@@ -328,12 +328,18 @@ if (sesion_activa()) {
     $regalosTotal = array_sum(array_map(static fn($g) => (int) $g['monto'], $regalos));
 
     $fotosTot = db()->query('SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM fotos')->fetch();
+    $porAlbum = ['general' => 0, 'favoritas' => 0];
+    foreach (db()->query('SELECT album, COUNT(*) AS n FROM fotos GROUP BY album')->fetchAll() as $fa) {
+        $porAlbum[$fa['album']] = (int) $fa['n'];
+    }
+    $albumVer = in_array($_GET['album'] ?? '', ['general', 'favoritas'], true) ? $_GET['album'] : null;
     $fotosN = (int) $fotosTot['n'];
     $pagina = max(1, (int) ($_GET['p'] ?? 1));
     $fotos = [];
     if ($vista === 'fotos') {
-        $q = db()->prepare('SELECT * FROM fotos ORDER BY creado DESC LIMIT ' . FOTOS_POR_PAGINA . ' OFFSET ?');
-        $q->execute([($pagina - 1) * FOTOS_POR_PAGINA]);
+        $q = db()->prepare('SELECT * FROM fotos' . ($albumVer ? ' WHERE album = ?' : '')
+            . ' ORDER BY creado DESC LIMIT ' . FOTOS_POR_PAGINA . ' OFFSET ?');
+        $q->execute($albumVer ? [$albumVer, ($pagina - 1) * FOTOS_POR_PAGINA] : [($pagina - 1) * FOTOS_POR_PAGINA]);
         $fotos = $q->fetchAll();
     }
 }
@@ -766,16 +772,25 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
       </section>
       <section class="tarjeta" style="text-align:center">
         <h3>QR para las mesas</h3>
-        <div id="qr" style="display:inline-block;background:#fff;padding:10px"></div>
-        <p class="sub" style="margin:6px 0"><?= e($sitio) ?>#fotos</p>
-        <button type="button" onclick="imprimirQr()">Imprimir</button>
+        <div style="display:flex;gap:18px;justify-content:center;flex-wrap:wrap">
+          <div><div id="qr-general" style="display:inline-block;background:#fff;padding:8px"></div><p class="sub" style="margin:4px 0">Todas las fotos</p></div>
+          <div><div id="qr-favoritas" style="display:inline-block;background:#fff;padding:8px"></div><p class="sub" style="margin:4px 0">Favoritas</p></div>
+        </div>
+        <p class="sub" style="margin:6px 0"><?= e($sitio) ?>#fotos · <?= e($sitio) ?>#favoritas</p>
+        <button type="button" onclick="imprimirQr()">Imprimir los dos</button>
       </section>
     </div>
 
     <?php if ($fotosN): ?>
-      <p style="margin:0 0 14px">Descargar todas en ZIP:
-        <?php for ($n = 1, $partes = (int) ceil($fotosN / FOTOS_POR_ZIP); $n <= $partes; $n++): ?>
-          <a class="boton" href="fotos-zip.php?parte=<?= $n ?>"><?= $partes > 1 ? "Parte {$n}" : 'Descargar' ?></a>
+      <nav class="filtros eyebrow" style="margin-bottom:12px">
+        <?php foreach ([null => "Todas ({$fotosN})", 'general' => "General ({$porAlbum['general']})", 'favoritas' => "Favoritas ({$porAlbum['favoritas']})"] as $k => $txt): ?>
+          <a class="<?= $albumVer === ($k ?: null) ? 'activo' : '' ?>" href="?v=fotos<?= $k ? '&album=' . $k : '' ?>"><?= e($txt) ?></a>
+        <?php endforeach; ?>
+      </nav>
+      <?php $nZip = $albumVer ? $porAlbum[$albumVer] : $fotosN; ?>
+      <p style="margin:0 0 14px">Descargar <?= $albumVer ? e($albumVer) : 'todas' ?> en ZIP:
+        <?php for ($n = 1, $partes = max(1, (int) ceil($nZip / FOTOS_POR_ZIP)); $n <= $partes; $n++): ?>
+          <a class="boton" href="fotos-zip.php?parte=<?= $n ?><?= $albumVer ? '&album=' . $albumVer : '' ?>"><?= $partes > 1 ? "Parte {$n}" : 'Descargar' ?></a>
         <?php endfor; ?>
         <?php if ($fotosN > FOTOS_POR_ZIP): ?><span class="sub">(en partes de <?= FOTOS_POR_ZIP ?>, para que el hosting no se corte)</span><?php endif; ?>
       </p>
@@ -786,7 +801,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
               <img src="foto.php?id=<?= (int) $f['id'] ?>" loading="lazy" alt="Foto de <?= e($f['autor'] ?: 'un invitado') ?>">
             </a>
             <figcaption>
-              <span><?= e($f['autor'] ?: 'Anónimo') ?> · <?= e((new DateTimeImmutable($f['creado']))->format('H:i')) ?></span>
+              <span><?= $f['album'] === 'favoritas' ? '★ ' : '' ?><?= e($f['autor'] ?: 'Anónimo') ?> · <?= e((new DateTimeImmutable($f['creado']))->format('H:i')) ?></span>
               <form method="post" class="inline" onsubmit="return confirm('¿Eliminar esta foto? No se puede deshacer.')">
                 <input type="hidden" name="accion" value="borrar_foto"><input type="hidden" name="id" value="<?= (int) $f['id'] ?>">
                 <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
@@ -809,16 +824,21 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script>
-      new QRCode(document.getElementById('qr'), { text: <?= json_encode($sitio . '#fotos') ?>, width: 168, height: 168, colorDark: '#383b2a' });
+      const qrSitio = <?= json_encode($sitio) ?>;
+      new QRCode(document.getElementById('qr-general'), { text: qrSitio + '#fotos', width: 150, height: 150, colorDark: '#383b2a' });
+      new QRCode(document.getElementById('qr-favoritas'), { text: qrSitio + '#favoritas', width: 150, height: 150, colorDark: '#383b2a' });
       function imprimirQr() {
-        const img = document.querySelector('#qr canvas') || document.querySelector('#qr img');
-        const src = img.tagName === 'CANVAS' ? img.toDataURL() : img.src;
+        const src = (id) => { const c = document.querySelector('#' + id + ' canvas'); return c ? c.toDataURL() : document.querySelector('#' + id + ' img').src; };
+        const bloque = (id, titulo, texto) => '<div style="display:inline-block;margin:0 30px;vertical-align:top">'
+          + '<p style="font-size:22px;font-style:italic;margin:0">' + titulo + '</p>'
+          + '<img src="' + src(id) + '" style="width:230px;margin:16px auto;display:block">'
+          + '<p style="margin:0;max-width:240px">' + texto + '</p></div>';
         const w = window.open('', '_blank');
         w.document.write('<body style="font-family:Georgia,serif;text-align:center;padding:40px;color:#383b2a">'
           + '<h1 style="font-weight:400;letter-spacing:.1em">AARON &amp; JASNE</h1>'
-          + '<p style="font-size:22px;font-style:italic">Comparte tus fotos de hoy</p>'
-          + '<img src="' + src + '" style="width:260px;margin:20px auto;display:block">'
-          + '<p>Escanea con la cámara de tu celular</p></body>');
+          + bloque('qr-general', 'Comparte tus fotos', 'Todas las fotos de hoy')
+          + bloque('qr-favoritas', 'Tus favoritas', 'Solo las más lindas ❤')
+          + '<p style="margin-top:30px">Escanea con la cámara de tu celular</p></body>');
         w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
       }
     </script>

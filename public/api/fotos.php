@@ -57,6 +57,8 @@ if (!isset($tipos[$tipo])) {
 }
 
 $autor = limpiar_texto($_POST['autor'] ?? null, 80);
+// Álbum: 'favoritas' solo si lo piden; cualquier otro valor va a 'general'.
+$album = ($_POST['album'] ?? '') === 'favoritas' ? 'favoritas' : 'general';
 
 try {
     // El límite por persona va por celular, no por IP: en la fiesta todos
@@ -84,8 +86,8 @@ try {
         throw new RuntimeException('No se pudo mover el archivo subido.');
     }
 
-    db()->prepare('INSERT INTO fotos (archivo, tipo, bytes, autor, creado) VALUES (?, ?, ?, ?, ?)')
-        ->execute([$archivo, $tipo, (int) $f['size'], $autor, ahora()]);
+    db()->prepare('INSERT INTO fotos (archivo, tipo, bytes, autor, album, creado) VALUES (?, ?, ?, ?, ?, ?)')
+        ->execute([$archivo, $tipo, (int) $f['size'], $autor, $album, ahora()]);
 } catch (Throwable $e) {
     error_log('[fotos] ' . $e->getMessage());
     responder_json(['ok' => false, 'error' => 'No pudimos guardar la foto. Inténtalo de nuevo.'], 500);
