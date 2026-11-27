@@ -74,12 +74,11 @@ export const evento = {
   },
 
   /**
-   * Una parcela. El link de Maps es el real (punto exacto: -34.06062,
-   * -70.773384). PENDIENTE: nombre del lugar y dirección escrita; mientras
-   * falten, la invitación muestra "Una parcela" y el botón al mapa.
+   * Parcela 34. El link de Maps es el punto exacto (-34.06062, -70.773384).
+   * Sin dirección escrita: la invitación muestra el nombre y el botón al mapa.
    */
   lugar: {
-    nombre: "PENDIENTE",
+    nombre: "Parcela 34",
     direccion: "",
     ciudad: "",
     mapsUrl: "https://maps.app.goo.gl/XrdKocCUHEYDhVTQ6",
