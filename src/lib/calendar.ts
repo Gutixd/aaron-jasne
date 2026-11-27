@@ -1,4 +1,4 @@
-import { evento } from "@/config/event.config";
+import { evento, pendiente } from "@/config/event.config";
 
 const utc = (d: Date) => d.toISOString().replace(/[-:]|\.\d{3}/g, "");
 
@@ -11,10 +11,12 @@ const fin = () => new Date(inicio().getTime() + 8 * 60 * 60 * 1000);
 
 const titulo = () => `Matrimonio de ${evento.pareja.uno} y ${evento.pareja.dos}`;
 
+// Sin nombre ni dirección escrita todavía, el link de Maps sirve de
+// ubicación: el calendario lo muestra y se abre con un toque.
 const ubicacion = () =>
   [evento.lugar.nombre, evento.lugar.direccion, evento.lugar.ciudad]
-    .filter(Boolean)
-    .join(", ");
+    .filter((v) => !pendiente(v))
+    .join(", ") || evento.lugar.mapsUrl;
 
 /**
  * Enlace a Google Calendar con el evento precargado. No pide iniciar sesión

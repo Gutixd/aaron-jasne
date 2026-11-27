@@ -26,16 +26,22 @@ export default function Lugar() {
       </Aparecer>
 
       <Aparecer delay={0.15} className="relative mt-6">
-        {sinLugar ? (
+        {sinLugar && !lugar.mapsUrl ? (
           <p className="text-[1.05rem] italic text-tinta-suave">Lugar por confirmar</p>
         ) : (
           <>
-            <p className="manuscrita text-[2.5rem] text-oliva-hondo">{lugar.nombre}</p>
-            <p className="mt-1 text-[1.05rem] leading-snug text-tinta">
-              {lugar.direccion}
-              <br />
-              {lugar.ciudad}
-            </p>
+            {/* Sin nombre todavía, pero con el punto exacto en el mapa. */}
+            <p className="manuscrita text-[2.5rem] text-oliva-hondo">{sinLugar ? "Una parcela" : lugar.nombre}</p>
+            {(lugar.direccion || lugar.ciudad) && (
+              <p className="mt-1 text-[1.05rem] leading-snug text-tinta">
+                {lugar.direccion}
+                {lugar.direccion && lugar.ciudad && <br />}
+                {lugar.ciudad}
+              </p>
+            )}
+            {sinLugar && (
+              <p className="mt-1 text-[1.02rem] italic text-tinta-suave">La ubicación exacta está en el mapa.</p>
+            )}
             {lugar.mapsUrl && (
               <a
                 href={lugar.mapsUrl}

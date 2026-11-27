@@ -156,7 +156,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         $c['menu'] = ['nota' => $P('menu_nota', 300), 'tiempos' => $tiempos];
 
-        $c['vestimenta'] = ['nota' => $P('vestimenta', 300)];
+        $c['vestimenta'] = ['nota' => $P('vestimenta', 800)];
 
         $tr = [];
         foreach (['titular', 'rut', 'banco', 'tipoCuenta', 'numero', 'correo'] as $k) {
@@ -586,7 +586,8 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
         <label class="e" for="an">Invitación (bajo "Nos casamos")</label>
         <textarea id="an" name="anuncio" rows="3"><?= $v('anuncio', $c['textos']['anuncio']) ?></textarea>
         <label class="e" for="ve">Dress code</label>
-        <input id="ve" name="vestimenta" value="<?= $v('vestimenta', $c['vestimenta']['nota']) ?>">
+        <textarea id="ve" name="vestimenta" rows="4"><?= $v('vestimenta', $c['vestimenta']['nota']) ?></textarea>
+        <p class="sub" style="margin:4px 0 0">Un párrafo por línea. El primero se ve grande (ej. "Formal.").</p>
         <label class="e" for="wa">WhatsApp de los novios <span class="sub" style="text-transform:none;letter-spacing:0">(con 56 adelante, sin +)</span></label>
         <input id="wa" name="whatsapp" inputmode="numeric" value="<?= $v('whatsapp', $c['whatsapp']['numero']) ?>">
       </section>

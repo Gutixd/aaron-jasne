@@ -73,12 +73,16 @@ export const evento = {
       "Nos encantaría que nos acompañes en uno de los días más importantes de nuestras vidas y que lo celebres junto a nosotros.",
   },
 
-  // FICTICIO — lugar de ejemplo.
+  /**
+   * Una parcela. El link de Maps es el real (punto exacto: -34.05973,
+   * -70.772819). PENDIENTE: nombre del lugar y dirección escrita; mientras
+   * falten, la invitación muestra "Una parcela" y el botón al mapa.
+   */
   lugar: {
-    nombre: "Viña Los Alerces",
-    direccion: "Camino a Melipilla Km 34",
-    ciudad: "Melipilla, Región Metropolitana",
-    mapsUrl: "https://maps.google.com/?q=Melipilla+Region+Metropolitana",
+    nombre: "PENDIENTE",
+    direccion: "",
+    ciudad: "",
+    mapsUrl: "https://maps.app.goo.gl/6uXX8AyakK7c9XmH6",
   },
 
   whatsapp: {
@@ -116,9 +120,14 @@ export const evento = {
 
   vestimenta: {
     titulo: "Dress code",
-    nota: "Formal. El blanco queda reservado para la novia.",
-    /** Colores sugeridos, de claro a oscuro. */
-    paleta: ["#f1ede4", "#a8ad95", "#6f7259", "#a89688", "#3d3f31"],
+    /** Un párrafo por línea. */
+    nota:
+      "Formal.\nLa celebración es en una parcela y la ceremonia es al aire libre: te recomendamos zapatos cómodos. Los tacos aguja no son la mejor idea para la ceremonia.\nEn la fiesta habrá pista de baile, y ahí todo bien con los zapatos.",
+    /** Colores que los invitados NO deben usar. Se muestran tachados. */
+    evitar: [
+      { nombre: "Blanco", color: "#f7f5ef" },
+      { nombre: "Verde", color: "#6b7d4a" },
+    ],
   },
 
   /**
@@ -137,12 +146,11 @@ export const evento = {
   },
 
   regalo: {
-    // FICTICIO — texto de ejemplo.
     texto:
-      "Tu presencia es nuestro mejor regalo. Pero si quieres hacernos un obsequio, un aporte para nuestra luna de miel será recibido con mucho cariño.",
+      "Tu presencia es nuestro mejor regalo. Si además quieres hacernos un obsequio, puedes hacerlo por transferencia a la cuenta de Aaron.",
     /**
-     * PENDIENTE — datos para transferir. Mientras alguno diga PENDIENTE, la
-     * invitación muestra "datos por confirmar" en vez de la tarjeta.
+     * PENDIENTE — datos de la cuenta de Aaron. Mientras alguno diga
+     * PENDIENTE, la invitación dice que estarán pronto en vez de la tarjeta.
      */
     transferencia: {
       titular: "PENDIENTE",
@@ -160,13 +168,10 @@ export const evento = {
     autor: "Mignon McLaughlin",
   },
 
-  /**
-   * FICTICIO — fecha límite de ejemplo. Pasada esta fecha el formulario se
-   * cierra solo: nunca dejarla en el pasado mientras se mande la invitación.
-   */
+  /** Confirmar hasta el 15 de diciembre. Pasada esa fecha el formulario se cierra solo. */
   rsvp: {
-    cierreIso: "2027-01-02T23:59:00-03:00",
-    cierreTexto: "2 de enero de 2027",
+    cierreIso: "2026-12-15T23:59:00-03:00",
+    cierreTexto: "15 de diciembre de 2026",
   },
 } as const;
 
