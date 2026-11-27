@@ -11,6 +11,7 @@ import ConAmor from "./components/secciones/ConAmor";
 import Programa from "./components/secciones/Programa";
 import Menu from "./components/secciones/Menu";
 import DressCode from "./components/secciones/DressCode";
+import Regalo from "./components/secciones/Regalo";
 import Cita from "./components/secciones/Cita";
 import Lugar from "./components/secciones/Lugar";
 import Galeria from "./components/secciones/Galeria";
@@ -68,6 +69,7 @@ export default function Invitacion() {
         <Programa />
         <Menu />
         <DressCode />
+        <Regalo />
         <Cita />
         <Lugar />
         <Galeria />

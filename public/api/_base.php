@@ -101,10 +101,23 @@ function preparar_tablas(PDO $pdo): void
         creado DATETIME NOT NULL
       ){$fin}");
 
+    // Avisos de regalo: el invitado transfiere por su banco y deja aquí su
+    // nombre, el monto (opcional) y un mensaje. La página no maneja dinero;
+    // esto es solo para que los novios sepan a quién agradecer.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS regalos (
+        id {$id},
+        invitado_id INT NULL,
+        nombre VARCHAR(120) NOT NULL,
+        monto INT UNSIGNED NULL,
+        mensaje VARCHAR(800) NULL,
+        creado DATETIME NOT NULL
+      ){$fin}");
+
     // Columnas que llegaron después: se agregan si faltan.
     asegurar_columna($pdo, $sqlite, 'confirmaciones', 'invitado_id', 'INT NULL');
     asegurar_columna($pdo, $sqlite, 'confirmaciones', 'canciones', 'VARCHAR(500) NULL');
     asegurar_columna($pdo, $sqlite, 'invitados', 'codigo', 'VARCHAR(16) NULL');
+    asegurar_columna($pdo, $sqlite, 'regalos', 'agradecido', 'TINYINT(1) NOT NULL DEFAULT 0');
 
     // Todo invitado tiene su código de link personal.
     foreach ($pdo->query("SELECT id FROM invitados WHERE codigo IS NULL OR codigo = ''")->fetchAll() as $f) {

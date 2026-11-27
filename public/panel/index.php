@@ -12,7 +12,7 @@ require __DIR__ . '/_sesion.php';
 
 $error = null;
 $aviso = null;
-$vista = in_array($_GET['v'] ?? '', ['respuestas', 'fotos'], true) ? $_GET['v'] : 'invitados';
+$vista = in_array($_GET['v'] ?? '', ['respuestas', 'fotos', 'regalos'], true) ? $_GET['v'] : 'invitados';
 const FOTOS_POR_PAGINA = 60;
 const FOTOS_POR_ZIP = 150;
 
@@ -102,6 +102,21 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         header('Location: ./?v=fotos&ok=foto');
         exit;
+    } elseif ($accion === 'agradecido') {
+        // Marca (o desmarca) que ya se agradeció el regalo.
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        if ($id) {
+            db()->prepare('UPDATE regalos SET agradecido = 1 - agradecido WHERE id = ?')->execute([$id]);
+        }
+        header('Location: ./?v=regalos');
+        exit;
+    } elseif ($accion === 'borrar_regalo') {
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        if ($id) {
+            db()->prepare('DELETE FROM regalos WHERE id = ?')->execute([$id]);
+        }
+        header('Location: ./?v=regalos&ok=regalo');
+        exit;
     } elseif ($accion === 'quitar') {
         $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
         if ($id) {
@@ -115,7 +130,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 $avisos = ['borrada' => 'Respuesta eliminada.', 'agregado' => 'Invitado agregado.',
-           'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.', 'foto' => 'Foto eliminada.'];
+           'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.', 'foto' => 'Foto eliminada.', 'regalo' => 'Aviso de regalo eliminado.'];
 $aviso ??= $avisos[$_GET['ok'] ?? ''] ?? null;
 
 // ── Datos ───────────────────────────────────────────────────────────────
@@ -174,6 +189,9 @@ if (sesion_activa()) {
     }));
     // Respuestas de gente que no está en la lista (antes de cargarla, o quitada).
     $sueltas = count(array_filter($respuestas, static fn($r) => $r['invitado_id'] === null));
+
+    $regalos = db()->query('SELECT * FROM regalos ORDER BY creado DESC')->fetchAll();
+    $regalosTotal = array_sum(array_map(static fn($g) => (int) $g['monto'], $regalos));
 
     $fotosTot = db()->query('SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM fotos')->fetch();
     $fotosN = (int) $fotosTot['n'];
@@ -316,6 +334,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
       <a class="<?= $vista === 'invitados' ? 'activo' : '' ?>" href="?v=invitados">Invitados (<?= $t['invitados'] ?>)</a>
       <a class="<?= $vista === 'respuestas' ? 'activo' : '' ?>" href="?v=respuestas">Respuestas (<?= count($respuestas) ?>)</a>
       <a class="<?= $vista === 'fotos' ? 'activo' : '' ?>" href="?v=fotos">Fotos (<?= $fotosN ?>)</a>
+      <a class="<?= $vista === 'regalos' ? 'activo' : '' ?>" href="?v=regalos">Regalos (<?= count($regalos) ?>)</a>
     </nav>
 
     <section class="cifras">
@@ -417,6 +436,47 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
       </table>
       <?php endif; ?>
       <?php if ($sueltas): ?><p class="sub" style="margin-top:14px"><?= $sueltas ?> respuesta(s) son de personas fuera de la lista: están en la pestaña Respuestas.</p><?php endif; ?>
+    <?php endif; ?>
+
+  <?php elseif ($vista === 'regalos'): ?>
+
+    <?php $pesos = static fn(int $n): string => '$' . number_format($n, 0, ',', '.'); $porAgradecer = count(array_filter($regalos, static fn($g) => !(int) $g['agradecido'])); ?>
+    <p class="sub" style="margin:0 0 14px">Avisos que dejan los invitados después de transferir. <b>Confirma cada monto en tu banco</b>: el aviso lo escribe el invitado y la página no revisa transferencias.</p>
+    <?php if (!$regalos): ?>
+      <div class="vacio">Aún no hay avisos de regalo.</div>
+    <?php else: ?>
+      <section class="cifras" style="grid-template-columns:repeat(3,1fr)">
+        <div class="cifra destacada"><b><?= count($regalos) ?></b><span class="eyebrow">Avisos</span></div>
+        <div class="cifra"><b style="font-size:1.7rem"><?= $pesos($regalosTotal) ?></b><span class="eyebrow">Montos avisados</span></div>
+        <div class="cifra"><b><?= $porAgradecer ?></b><span class="eyebrow">Por agradecer</span></div>
+      </section>
+      <table>
+        <thead><tr class="eyebrow"><th>Nombre</th><th>Monto</th><th>Mensaje</th><th>Fecha</th><th>Agradecido</th><th></th></tr></thead>
+        <tbody>
+        <?php foreach ($regalos as $g): ?>
+          <tr>
+            <td><b><?= e($g['nombre']) ?></b><?= $g['invitado_id'] !== null ? '<div class="sub">desde su link personal</div>' : '' ?></td>
+            <td data-t="Monto"><?= $g['monto'] !== null ? e($pesos((int) $g['monto'])) : '—' ?></td>
+            <td data-t="Mensaje" class="sub"><?= e($g['mensaje'] ?: '—') ?></td>
+            <td data-t="Fecha" class="sub"><?= e($fecha($g['creado'])) ?></td>
+            <td data-t="Agradecido">
+              <form method="post" class="inline">
+                <input type="hidden" name="accion" value="agradecido"><input type="hidden" name="id" value="<?= (int) $g['id'] ?>">
+                <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
+                <button type="submit" class="<?= (int) $g['agradecido'] ? 'principal' : '' ?>"><?= (int) $g['agradecido'] ? '✓ Agradecido' : 'Marcar' ?></button>
+              </form>
+            </td>
+            <td>
+              <form method="post" class="inline" onsubmit="return confirm('¿Eliminar este aviso? No se puede deshacer.')">
+                <input type="hidden" name="accion" value="borrar_regalo"><input type="hidden" name="id" value="<?= (int) $g['id'] ?>">
+                <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
+                <button type="submit">Eliminar</button>
+              </form>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
     <?php endif; ?>
 
   <?php elseif ($vista === 'fotos'): ?>

@@ -136,9 +136,23 @@ export const evento = {
     ] as { tiempo: string; plato: string; opciones?: string }[],
   },
 
-  // FICTICIO — texto de ejemplo.
-  regalo:
-    "Tu presencia es nuestro mejor regalo. Pero si quieres hacernos un obsequio, un aporte para nuestra luna de miel será recibido con mucho cariño.",
+  regalo: {
+    // FICTICIO — texto de ejemplo.
+    texto:
+      "Tu presencia es nuestro mejor regalo. Pero si quieres hacernos un obsequio, un aporte para nuestra luna de miel será recibido con mucho cariño.",
+    /**
+     * PENDIENTE — datos para transferir. Mientras alguno diga PENDIENTE, la
+     * invitación muestra "datos por confirmar" en vez de la tarjeta.
+     */
+    transferencia: {
+      titular: "PENDIENTE",
+      rut: "PENDIENTE",
+      banco: "PENDIENTE",
+      tipoCuenta: "PENDIENTE", // ej. "Cuenta corriente", "Cuenta vista / RUT"
+      numero: "PENDIENTE",
+      correo: "PENDIENTE",
+    },
+  },
 
   cita: {
     texto:

@@ -126,6 +126,9 @@
   background: transparent;
   padding: 0.6rem 0;
   font-size: 1.05rem;
+  /* Teléfonos y montos legibles: las cifras antiguas de Cormorant hacen
+     que "11" parezca "II". */
+  font-variant-numeric: lining-nums;
   outline: none;
   transition: border-color 0.3s ease;
 }

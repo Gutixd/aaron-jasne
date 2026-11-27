@@ -3,9 +3,9 @@ import { BandaOliva, Divisor, RamaHorizontal } from "../Ornamentos";
 import Aparecer from "../Aparecer";
 import { evento } from "@/config/event.config";
 
-/** Banda oliva rasgada arriba y abajo: dress code y regalos. */
+/** Banda oliva rasgada arriba y abajo: dress code. */
 export default function DressCode() {
-  const { vestimenta, regalo } = evento;
+  const { vestimenta } = evento;
 
   return (
     <section id="vestimenta">
@@ -33,9 +33,6 @@ export default function DressCode() {
           <Aparecer delay={0.1}>
             <p className="mx-auto mt-6 max-w-[17rem] text-[1.02rem] italic text-papel-claro/85">
               {vestimenta.nota}
-            </p>
-            <p className="mx-auto mt-6 max-w-[17rem] text-[1.05rem] leading-[1.6] text-papel-claro/90">
-              {regalo}
             </p>
             <span className="mt-6 inline-block text-dorado-claro">
               <RamaHorizontal ancho={96} />

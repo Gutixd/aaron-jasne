@@ -14,6 +14,7 @@ const indice: [string, string][] = [
   ["programa", "Programa"],
   ["menu", "Menú"],
   ["vestimenta", "Dress code"],
+  ["regalo", "Regalo"],
   ["lugar", "Lugar"],
   ["galeria", "Galería"],
   ["confirmar", "Confirmar"],
