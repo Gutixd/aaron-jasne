@@ -57,6 +57,20 @@ export default function Galeria() {
 
 /* ─────────────────────────────────────────────────────────────── visor */
 
+/** ¿La persona pellizcó para acercar? (visualViewport.scale > 1) */
+function useZoomDelNavegador() {
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const revisar = () => setZoom(vv.scale > 1.05);
+    revisar();
+    vv.addEventListener("resize", revisar);
+    return () => vv.removeEventListener("resize", revisar);
+  }, []);
+  return zoom;
+}
+
 function Visor({
   indice,
   onCerrar,
@@ -68,6 +82,7 @@ function Visor({
 }) {
   const total = evento.galeria.length;
   const abierto = indice !== null;
+  const conZoom = useZoomDelNavegador();
 
   const mover = useCallback(
     (d: number) => indice !== null && onIr((indice + d + total) % total),
@@ -111,16 +126,26 @@ function Visor({
             </button>
           </div>
 
-          <div className="relative flex flex-1 items-center justify-center px-4 pb-6">
+          {/* Tocar el fondo (fuera de la foto) también cierra: otra salida
+              si con zoom el botón "Cerrar" quedó fuera de la pantalla. */}
+          <div
+            className="relative flex flex-1 items-center justify-center px-4 pb-6"
+            onClick={(e) => e.target === e.currentTarget && onCerrar()}
+          >
             <AnimatePresence mode="wait">
               <motion.div
                 key={indice}
-                className="w-full max-w-[26rem] touch-pan-y"
+                // pan-y + pinch-zoom: se puede pellizcar para acercar y alejar.
+                // Con solo "pan-y" el navegador bloqueaba el pellizco y quien
+                // ya tenía la página con zoom no podía volver atrás.
+                className="w-full max-w-[26rem] [touch-action:pan-y_pinch-zoom]"
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.35 }}
-                drag="x"
+                // Deslizar para cambiar de foto solo sin zoom: con zoom, el
+                // dedo es para mover la foto ampliada, no para cambiarla.
+                drag={conZoom ? false : "x"}
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.35}
                 onDragEnd={(_, info) => {
