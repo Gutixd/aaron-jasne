@@ -12,6 +12,7 @@ export default function Foto({
   className = "",
   oscuro = false,
   prioridad = false,
+  marco,
 }: {
   src: string;
   alt: string;
@@ -19,11 +20,29 @@ export default function Foto({
   /** Hueco sobre fondo oliva: el marcador va en tonos claros. */
   oscuro?: boolean;
   prioridad?: boolean;
+  /** Clases de un marco alrededor de la foto; si la foto falta, el marco tampoco aparece. */
+  marco?: string;
 }) {
   const [falla, setFalla] = useState(false);
   const archivo = src.split("/").pop();
 
-  if (falla) {
+  // En el sitio publicado, una foto que falta no deja un hueco con
+  // instrucciones a la vista de los invitados: simplemente no aparece.
+  if (falla && !import.meta.env.DEV) return null;
+
+  const contenido = falla ? hueco() : (
+    <img
+      src={src}
+      alt={alt}
+      loading={prioridad ? "eager" : "lazy"}
+      decoding="async"
+      onError={() => setFalla(true)}
+      className={`object-cover ${className}`}
+    />
+  );
+  return marco ? <div className={marco}>{contenido}</div> : contenido;
+
+  function hueco() {
     return (
       <div
         className={`flex flex-col items-center justify-center gap-2 border border-dashed text-center ${
@@ -44,15 +63,4 @@ export default function Foto({
       </div>
     );
   }
-
-  return (
-    <img
-      src={src}
-      alt={alt}
-      loading={prioridad ? "eager" : "lazy"}
-      decoding="async"
-      onError={() => setFalla(true)}
-      className={`object-cover ${className}`}
-    />
-  );
 }

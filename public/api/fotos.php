@@ -59,8 +59,18 @@ if (!isset($tipos[$tipo])) {
 $autor = limpiar_texto($_POST['autor'] ?? null, 80);
 
 try {
-    if (!dentro_del_limite('foto', $r['por_hora'], 60)) {
+    // El límite por persona va por celular, no por IP: en la fiesta todos
+    // comparten el mismo Wi-Fi (una sola IP) y un tope por IP dejaría a
+    // todo el salón con 60 fotos. Cada celular manda un identificador al
+    // azar que guarda en su navegador. Como alguien podría inventarlo, hay
+    // además un tope por IP mucho más alto, y los topes totales de abajo.
+    $disp = is_string($_POST['dispositivo'] ?? null) && preg_match('/^[a-z0-9]{8,40}$/', $_POST['dispositivo'])
+        ? $_POST['dispositivo'] : 'sin-id';
+    if (!dentro_del_limite('foto|' . $disp, $r['por_hora'], 60)) {
         responder_json(['ok' => false, 'error' => 'Subiste muchas fotos seguidas. Espera un rato y sigue.'], 429);
+    }
+    if (!dentro_del_limite('foto-ip', $r['por_hora'] * 25, 60)) {
+        responder_json(['ok' => false, 'error' => 'Hay muchas fotos subiéndose a la vez. Inténtalo en unos minutos.'], 429);
     }
 
     $t = db()->query('SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM fotos')->fetch();

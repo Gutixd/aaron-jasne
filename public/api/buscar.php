@@ -30,7 +30,7 @@ try {
     }
     // Más holgado que confirmar (la gente prueba variantes de su nombre),
     // pero suficiente para que nadie recorra la lista a punta de intentos.
-    if (!dentro_del_limite('buscar', 30, 10)) {
+    if (!dentro_del_limite('buscar', 60, 10)) {
         responder_json(['ok' => false, 'error' => 'Demasiados intentos seguidos. Espera unos minutos.'], 429);
     }
 

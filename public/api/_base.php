@@ -160,7 +160,8 @@ function invitado_publico(array $inv): array
  *   max_mb         — tamaño máximo por foto.
  *   max_total_mb   — tope de todo lo subido, para no llenar el hosting.
  *   max_fotos      — tope de cantidad de fotos.
- *   por_hora       — fotos por persona (IP) por hora.
+ *   por_hora       — fotos por celular por hora (por IP se permite 25 veces eso,
+ *                    porque en la fiesta todos comparten el mismo Wi-Fi).
  * Sin 'desde' y 'hasta' la subida queda cerrada.
  */
 function reglas_fotos(): array

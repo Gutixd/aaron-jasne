@@ -477,6 +477,8 @@ function Gracias({
   const pila = datos.nombre.trim().split(/\s+/)[0] || "";
   // "camila" → "Camila": muchos escriben su nombre en minúsculas en el celular.
   const nombrePila = saludo ?? pila.charAt(0).toLocaleUpperCase("es-CL") + pila.slice(1);
+  // Habla en plural si vienen varios o si la invitación es de una familia.
+  const varios = (asiste && datos.acompanantes > 0) || /^familia\b/i.test(saludo ?? "");
 
   return (
     <motion.div
@@ -493,8 +495,8 @@ function Gracias({
       </p>
       <p className="mt-3 text-[1.05rem] text-tinta">
         {asiste
-          ? "Nos alegra muchísimo saber que estarás con nosotros."
-          : "Te vamos a extrañar ese día. Gracias por contarnos."}
+          ? `Nos alegra muchísimo saber que ${varios ? "estarán" : "estarás"} con nosotros.`
+          : `${varios ? "Los" : "Te"} vamos a extrañar ese día. Gracias por contarnos.`}
       </p>
 
       {hayWhatsapp() && (

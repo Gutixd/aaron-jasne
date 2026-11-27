@@ -3,6 +3,7 @@ import Lenis from "lenis";
 
 import Sobre from "./components/Sobre";
 import Musica from "./components/Musica";
+import LateralesEscritorio from "./components/LateralesEscritorio";
 
 import Portada from "./components/secciones/Portada";
 import Fecha from "./components/secciones/Fecha";
@@ -58,6 +59,7 @@ export default function Invitacion() {
         }}
       />
       <Musica arrancar={abierta} />
+      <LateralesEscritorio />
 
       <main className="papel mx-auto w-full max-w-[30rem] shadow-[0_0_60px_rgba(0,0,0,0.35)]">
         <Portada />

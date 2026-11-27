@@ -17,9 +17,12 @@ export default function Lugar() {
 
       {/* Foto enmarcada: filete fino con margen claro, como una postal. */}
       <Aparecer delay={0.1} className="mx-auto mt-8 max-w-[21rem]">
-        <div className="border border-linea bg-papel-claro p-2 shadow-[0_10px_24px_-14px_rgba(58,59,47,0.6)]">
-          <Foto src={fotos.lugar} alt={lugar.nombre || "El lugar"} className="aspect-[4/3] w-full" />
-        </div>
+        <Foto
+          src={fotos.lugar}
+          alt={lugar.nombre || "El lugar"}
+          className="block aspect-[4/3] w-full"
+          marco="border border-linea bg-papel-claro p-2 shadow-[0_10px_24px_-14px_rgba(58,59,47,0.6)]"
+        />
       </Aparecer>
 
       <Aparecer delay={0.15} className="relative mt-6">

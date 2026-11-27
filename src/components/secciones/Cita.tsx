@@ -16,9 +16,9 @@ export default function Cita() {
         </blockquote>
         <p className="rotulo mt-4 text-[0.66rem] text-tinta-suave">{cita.autor}</p>
       </Aparecer>
-      <div className="mt-6 flex items-end justify-between">
-        <Flores src={fotos.floresEsquina} className="-ml-10 w-32" />
-        <Flores src={fotos.floresEsquina} className="-mr-10 w-32" espejo />
+      <div className="mt-4 flex items-end justify-between">
+        <Flores src={fotos.floresEsquina} className="-ml-10 w-24" />
+        <Flores src={fotos.floresEsquina} className="-mr-10 w-24" espejo />
       </div>
     </section>
   );

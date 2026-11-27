@@ -10,7 +10,24 @@ const MAX_POR_TANDA = 20;
 /** Lado mayor tras achicar: nítida en pantalla e impresa, y ~10 veces más liviana. */
 const LADO_MAX = 2400;
 
-type Estado = "cargando" | "antes" | "abierto" | "cerrado" | "sin_servidor";
+/**
+ * Identificador al azar de este celular, guardado en su navegador. Sirve
+ * para que el límite de fotos por hora sea por persona y no por Wi-Fi.
+ */
+function idDispositivo(): string {
+  try {
+    let id = localStorage.getItem("aj-dispositivo");
+    if (!id) {
+      id = Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 20);
+      localStorage.setItem("aj-dispositivo", id);
+    }
+    return id;
+  } catch {
+    return "sin-id";
+  }
+}
+
+type Estado ="cargando" | "antes" | "abierto" | "cerrado" | "sin_servidor";
 type Progreso = { total: number; listas: number; fallidas: number; error: string | null };
 
 /**
@@ -75,6 +92,7 @@ export default function FotosInvitados() {
         const blob = await achicar(a);
         cuerpo.append("foto", blob, blob === a ? a.name : "foto.jpg");
         if (autor.trim()) cuerpo.append("autor", autor.trim());
+        cuerpo.append("dispositivo", idDispositivo());
         const r = await fetch(API, { method: "POST", body: cuerpo });
         const j = (await r.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
         if (r.ok && j?.ok) p.listas++;
