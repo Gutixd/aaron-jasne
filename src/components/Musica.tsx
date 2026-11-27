@@ -127,7 +127,9 @@ export default function Musica({ arrancar }: { arrancar: boolean }) {
         onClick={alternar}
         aria-label={sonando ? "Pausar música" : "Reproducir música"}
         aria-pressed={sonando}
-        className="relative flex h-13 w-13 cursor-pointer items-center justify-center rounded-full bg-noche text-hueso shadow-[0_10px_30px_-8px_rgba(14,17,22,0.6)] transition-colors hover:bg-rosa"
+        // El borde claro lo separa del fondo en las secciones oscuras, donde
+        // un botón negro sobre negro prácticamente desaparecía.
+        className="relative flex h-13 w-13 cursor-pointer items-center justify-center rounded-full border border-hueso/25 bg-noche text-hueso shadow-[0_10px_30px_-8px_rgba(14,17,22,0.6)] transition-colors hover:bg-rosa"
         style={{ width: 52, height: 52 }}
       >
         {/* Ondas que salen del botón mientras suena. */}

@@ -120,7 +120,9 @@ export default function Mapa({ src }: { src: string }) {
             {evento.lugar.coordenadas && (
               <motion.span
                 aria-hidden
-                className="eyebrow pointer-events-none absolute bottom-4 left-4 z-20 text-[0.45rem] text-hueso drop-shadow-[0_1px_3px_rgba(25,27,31,0.85)]"
+                // Arriba a la derecha: abajo a la izquierda Google pone su
+                // miniatura satelital y las coordenadas quedaban encima.
+                className="eyebrow pointer-events-none absolute right-5 top-4 z-20 text-[0.45rem] text-hueso drop-shadow-[0_1px_3px_rgba(25,27,31,0.85)]"
                 initial={{ opacity: 0, y: 8 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -136,7 +138,8 @@ export default function Mapa({ src }: { src: string }) {
                 <motion.button
                   type="button"
                   onClick={() => setActivo(true)}
-                  className="absolute inset-0 z-30 flex cursor-pointer items-end justify-center pb-5"
+                  // pb-11 lo deja por encima de la franja de créditos de Google.
+                  className="absolute inset-0 z-30 flex cursor-pointer items-end justify-center pb-11"
                   aria-label="Activar el mapa para poder moverlo"
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}

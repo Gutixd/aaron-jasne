@@ -168,8 +168,10 @@ export function Sello({ letras, delay = 0 }: { letras: string; delay?: number })
         aria-hidden
         className="absolute inset-0 rounded-full opacity-45"
         style={{
+          // Cierra con el mismo valor con el que empieza: si no, al dar la
+          // vuelta salta de transparente a luz y deja una costura vertical.
           background:
-            "conic-gradient(from 0deg, rgba(255,255,255,0.16) 0deg, transparent 42deg, rgba(0,0,0,0.2) 108deg, transparent 176deg, rgba(255,255,255,0.12) 244deg, transparent 310deg)",
+            "conic-gradient(from 0deg, rgba(255,255,255,0.16) 0deg, transparent 42deg, rgba(0,0,0,0.2) 108deg, transparent 176deg, rgba(255,255,255,0.12) 244deg, transparent 310deg, rgba(255,255,255,0.16) 360deg)",
         }}
       />
       <span className="relative font-display text-lg leading-none tracking-[0.06em] text-[#f2d9c9] sm:text-xl">

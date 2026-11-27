@@ -38,6 +38,12 @@
     overflow-x: clip;
   }
 
+  /* Al saltar a una sección desde el menú, la barra fija tapaba su
+     comienzo. Este margen deja el título justo debajo de la barra. */
+  section[id] {
+    scroll-margin-top: 4.5rem;
+  }
+
   body {
     margin: 0;
     background-color: var(--color-hueso);
@@ -57,6 +63,9 @@
     font-family: var(--font-display);
     font-weight: 400;
     letter-spacing: -0.015em;
+    /* Instrument Serif trae un espacio entre palabras muy estrecho y el
+       interletrado negativo lo achica más: "El comienzo" casi se pegaba. */
+    word-spacing: 0.08em;
   }
 
   ::selection {

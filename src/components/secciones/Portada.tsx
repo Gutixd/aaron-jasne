@@ -40,8 +40,11 @@ export default function Portada() {
         ) : (
           <div className="absolute inset-0 bg-[radial-gradient(130%_100%_at_25%_20%,#242a33_0%,#161a21_45%,#0b0d11_100%)]" />
         )}
-        {/* Degradado bajo el texto: garantiza contraste cuando haya foto. */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(11,13,17,0.92)_0%,rgba(11,13,17,0.45)_38%,rgba(11,13,17,0.18)_70%,rgba(11,13,17,0.5)_100%)]" />
+        {/* Degradado bajo el texto: garantiza contraste cuando haya foto.
+            En móvil el bloque de texto sube hasta casi la mitad de la
+            pantalla, así que la zona oscura tiene que llegar hasta ahí: con
+            0.45 al 38% el rótulo desaparecía sobre una foto clara. */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(11,13,17,0.94)_0%,rgba(11,13,17,0.74)_30%,rgba(11,13,17,0.5)_50%,rgba(11,13,17,0.16)_74%,rgba(11,13,17,0.5)_100%)]" />
       </motion.div>
 
       {/* Fecha en vertical por el canto derecho. */}
@@ -66,7 +69,7 @@ export default function Portada() {
         className="relative z-10 w-full px-6 pb-20 sm:px-12 sm:pb-24"
       >
         <motion.span
-          className="eyebrow mb-6 flex items-center gap-3 text-[0.58rem] text-rosa-claro"
+          className="eyebrow mb-6 flex items-center gap-3 text-[0.58rem] text-rosa-claro [text-shadow:0_1px_8px_rgba(11,13,17,0.7)]"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 1.2, delay: 0.4, ease: silk }}
@@ -104,7 +107,9 @@ export default function Portada() {
 
       <motion.a
         href="#cuenta"
-        className="absolute bottom-8 right-6 flex flex-col items-center gap-3 text-hueso/40 transition-colors hover:text-rosa-claro sm:right-12"
+        // Solo desde sm: en móvil esa esquina es del botón de música y se
+        // pisaban. En el teléfono deslizar es obvio y no hace falta el aviso.
+        className="absolute bottom-8 right-12 hidden flex-col items-center gap-3 text-hueso/40 transition-colors hover:text-rosa-claro sm:flex"
         aria-label="Bajar"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}

@@ -157,10 +157,12 @@ export const evento = {
   // por rutas en public/fotos/ cuando tengan la sesión de fotos lista.
   fotos: {
     portada: "https://picsum.photos/seed/aj-portada/1600/2000",
+    // Cuatro huecos: 01 lleva una, 02 una a sangre y 03 dos en diagonal.
     historia: [
       "https://picsum.photos/seed/aj-historia-1/1000/1250",
       "https://picsum.photos/seed/aj-historia-2/1000/1250",
-      "https://picsum.photos/seed/aj-historia-3/1000/1000",
+      "https://picsum.photos/seed/aj-historia-3/1000/1250",
+      "https://picsum.photos/seed/aj-historia-4/1000/1000",
     ] as (string | null)[],
   },
 
@@ -171,10 +173,14 @@ export const evento = {
     reservado: "El blanco queda para Jasne.",
   },
 
-  /** FICTICIO — fecha límite de ejemplo, ajústala junto con la fecha real. */
+  /**
+   * FICTICIO — fecha límite de ejemplo, ajústala junto con la fecha real.
+   * Pasada esta fecha el formulario se cierra solo, así que nunca debe
+   * quedar en el pasado mientras se siga mandando la invitación.
+   */
   rsvp: {
-    cierreIso: "2026-12-01T23:59:00-03:00",
-    cierreTexto: "1 de diciembre de 2026",
+    cierreIso: "2027-01-02T23:59:00-03:00",
+    cierreTexto: "2 de enero de 2027",
   },
 
   // FICTICIO — contactos de ejemplo con números inventados.

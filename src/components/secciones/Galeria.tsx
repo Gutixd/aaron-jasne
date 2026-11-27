@@ -177,17 +177,27 @@ function Visor({
             <AnimatePresence mode="wait">
               <motion.div
                 key={indice}
-                className="flex max-h-full max-w-full items-center justify-center"
+                className="flex max-h-full max-w-full touch-pan-y items-center justify-center"
                 initial={{ opacity: 0, scale: 0.94 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 1.04 }}
                 transition={{ duration: 0.55, ease: silk }}
+                // En el teléfono se pasa de foto deslizando, que es el gesto
+                // que todos esperan. 60 px o un golpe rápido cuentan.
+                drag="x"
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.35}
+                onDragEnd={(_, info) => {
+                  if (info.offset.x < -60 || info.velocity.x < -400) siguiente();
+                  else if (info.offset.x > 60 || info.velocity.x > 400) anterior();
+                }}
               >
                 {foto.src ? (
                   <img
                     src={foto.src}
                     alt={foto.alt}
-                    className="max-h-[72svh] w-auto max-w-full object-contain"
+                    draggable={false}
+                    className="max-h-[72svh] w-auto max-w-full select-none object-contain"
                   />
                 ) : (
                   <span className="flex aspect-[3/4] w-[min(78vw,26rem)] flex-col items-center justify-center gap-6 border border-hueso/12 text-hueso/25">
@@ -219,7 +229,9 @@ function Flecha({ lado, onClick }: { lado: "izq" | "der"; onClick: () => void })
       type="button"
       onClick={onClick}
       aria-label={lado === "izq" ? "Anterior" : "Siguiente"}
-      className={`absolute top-1/2 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-hueso/15 text-hueso/60 transition-colors hover:border-rosa hover:text-rosa-claro ${
+      // Fondo oscuro translúcido: en móvil la flecha queda encima de la foto
+      // y con fondo transparente desaparecía sobre cualquier imagen clara.
+      className={`absolute top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-hueso/30 bg-noche/55 text-hueso/90 backdrop-blur-sm transition-colors hover:border-rosa hover:bg-rosa hover:text-hueso ${
         lado === "izq" ? "left-2 sm:left-6" : "right-2 sm:right-6"
       }`}
     >

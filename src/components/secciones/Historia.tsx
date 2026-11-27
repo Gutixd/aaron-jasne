@@ -149,7 +149,7 @@ function CapituloTres({ cap }: { cap: Cap }) {
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 1.4, delay: 0.15, ease: silk }}
         >
-          <Imagen src={null} alt="" indice={4} />
+          <Imagen src={evento.fotos.historia[3] ?? null} alt={cap.titulo} indice={4} />
         </motion.div>
       </div>
     </article>

@@ -10,9 +10,28 @@ const silk = [0.22, 1, 0.36, 1] as const;
  * en serie.
  */
 
+/*
+ * IMPORTANTE para todas las máscaras de este archivo: quien observa si el
+ * texto entró en pantalla es la ENVOLTURA, no el texto.
+ *
+ * El texto arranca desplazado dentro de un `overflow: hidden`, o sea
+ * totalmente recortado. IntersectionObserver descuenta lo que recortan los
+ * ancestros, así que veía ese texto como 0 % visible para siempre y la
+ * animación nunca se disparaba: los títulos de diez secciones quedaban
+ * invisibles. La envoltura no está recortada, así que la observamos a ella y
+ * le pasamos la orden al texto con variantes.
+ */
+const mascara = {
+  oculto: (desde: string) => ({ y: desde }),
+  visible: { y: "0%" },
+};
+
 /**
  * Máscara por línea: el texto sube desde detrás de un borde invisible. Es el
  * revelado más contenido — para titulares grandes en serif.
+ *
+ * Lleva el mismo desahogo inferior que LineaMascara: sin él, la cola de la
+ * "g" de "¿Cómo llegar?" o "El itinerario" quedaba cortada por la máscara.
  */
 export function RevelarMascara({
   children,
@@ -26,17 +45,22 @@ export function RevelarMascara({
   duracion?: number;
 }) {
   return (
-    <span className={`block overflow-hidden ${className}`}>
+    <motion.span
+      className={`block overflow-hidden ${className}`}
+      style={{ paddingBottom: "0.2em", marginBottom: "-0.2em" }}
+      initial="oculto"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.5 }}
+    >
       <motion.span
         className="block"
-        initial={{ y: "110%" }}
-        whileInView={{ y: "0%" }}
-        viewport={{ once: true, amount: 0.6 }}
+        custom="150%"
+        variants={mascara}
         transition={{ duration: duracion, delay, ease: silk }}
       >
         {children}
       </motion.span>
-    </span>
+    </motion.span>
   );
 }
 
@@ -73,20 +97,22 @@ export function LineaMascara({
   desahogo?: string;
 }) {
   return (
-    <span
+    <motion.span
       className={`block overflow-hidden ${className}`}
       style={{ paddingBottom: desahogo, marginBottom: `-${desahogo}` }}
+      initial="oculto"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.4 }}
     >
       <motion.span
         className="block"
-        initial={{ y: "150%" }}
-        whileInView={{ y: "0%" }}
-        viewport={{ once: true, amount: 0.4 }}
+        custom="150%"
+        variants={mascara}
         transition={{ duration: duracion, delay, ease: silk }}
       >
         {children}
       </motion.span>
-    </span>
+    </motion.span>
   );
 }
 
