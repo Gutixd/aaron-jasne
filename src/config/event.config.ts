@@ -1,58 +1,49 @@
 /**
- * Configuración del evento — única fuente de verdad.
+ * Configuración del evento — única fuente de verdad del contenido.
  *
- * Los valores marcados con PENDIENTE son marcadores de posición: nadie nos
- * dio ese dato todavía. No están inventados para rellenar, están señalados
- * para que se reemplacen. La interfaz sabe leer esas banderas y se comporta
- * distinto mientras no estén confirmados (ver `fecha.confirmada`).
- * Los marcados FICTICIO son contenido de ejemplo para reemplazar.
+ * Marcas:
+ *   PENDIENTE — dato real que aún no se sabe. La interfaz dice "por confirmar".
+ *   FICTICIO  — contenido de ejemplo para ver el diseño. Reemplazar antes de enviar.
  *
- * No hay base de datos: todo el contenido sale de este archivo.
+ * FOTOS: no hace falta tocar este archivo. Deja cada imagen en
+ * `public/fotos/` con el nombre indicado y aparece sola. Mientras falte,
+ * la invitación muestra un hueco con ese nombre.
  */
 
-export type ItemCronograma = {
+export type Icono =
+  | "copas"
+  | "anillos"
+  | "arco"
+  | "camara"
+  | "cubiertos"
+  | "torta"
+  | "musica"
+  | "destello";
+
+export type ItemPrograma = {
   hora: string;
   titulo: string;
-  descripcion?: string;
-  icono: "anillos" | "copa" | "cena" | "musica" | "brindis" | "corazon";
+  /** Segunda línea opcional, como "& Brindis". */
+  detalle?: string;
+  icono: Icono;
 };
 
-export type FotoGaleria = {
-  src: string | null;
-  alt: string;
-  caption?: string;
-  /** Alto relativo dentro del mosaico. Rompe la cuadrícula perfecta. */
-  peso?: 1 | 2 | 3;
-};
-
-/*
- * Cronograma y galería se declaran fuera del objeto porque `as const`
- * congelaría cada literal y los campos opcionales (descripcion, caption)
- * dejarían de existir en el tipo. Anotados así, siguen siendo editables
- * con todos sus campos disponibles.
- */
-const cronograma: ItemCronograma[] = [
-  { hora: "18:00", titulo: "Recepción", icono: "copa" },
+/** FICTICIO — horarios de ejemplo. */
+const programa: ItemPrograma[] = [
+  { hora: "18:00", titulo: "Llegada", detalle: "de los invitados", icono: "copas" },
   { hora: "18:30", titulo: "Ceremonia", icono: "anillos" },
-  { hora: "20:00", titulo: "Cena", icono: "cena" },
-  { hora: "21:30", titulo: "Celebración", icono: "brindis" },
-  { hora: "23:00", titulo: "Fiesta", icono: "musica" },
+  { hora: "19:15", titulo: "Sesión de fotos", icono: "camara" },
+  { hora: "20:00", titulo: "Cena", icono: "cubiertos" },
+  { hora: "21:30", titulo: "Torta", detalle: "& Brindis", icono: "torta" },
+  { hora: "22:00", titulo: "Fiesta", icono: "musica" },
+  { hora: "02:00", titulo: "Fin de la noche", icono: "destello" },
 ];
 
-/**
- * FICTICIO — fotos de relleno de Picsum (picsum.photos), no de Aaron y
- * Jasne. Semillas fijas para que cada una salga siempre igual mientras se
- * revisa el diseño. Reemplázalas por las reales antes de publicar: basta
- * con cambiar cada `src` por una ruta en `public/fotos/...`.
- */
-const galeria: FotoGaleria[] = [
-  { src: "https://picsum.photos/seed/aj-galeria-1/900/1200", alt: "Aaron y Jasne", peso: 2 },
-  { src: "https://picsum.photos/seed/aj-galeria-2/900/900", alt: "Aaron y Jasne", peso: 1 },
-  { src: "https://picsum.photos/seed/aj-galeria-3/900/1400", alt: "Aaron y Jasne", peso: 3 },
-  { src: "https://picsum.photos/seed/aj-galeria-4/900/900", alt: "Aaron y Jasne", peso: 1 },
-  { src: "https://picsum.photos/seed/aj-galeria-5/900/1200", alt: "Aaron y Jasne", peso: 2 },
-  { src: "https://picsum.photos/seed/aj-galeria-6/900/900", alt: "Aaron y Jasne", peso: 1 },
-];
+/** Seis huecos para la galería: public/fotos/galeria-1.jpg … galeria-6.jpg */
+const galeria = [1, 2, 3, 4, 5, 6].map((n) => ({
+  src: `/fotos/galeria-${n}.jpg`,
+  alt: `Aaron y Jasne ${n}`,
+}));
 
 export const evento = {
   pareja: {
@@ -63,131 +54,91 @@ export const evento = {
 
   fecha: {
     /**
-     * PENDIENTE — día exacto sin confirmar. Enero 2027 es lo único cerrado.
-     * La cuenta regresiva necesita un instante concreto, así que corre sobre
-     * esta estimación y la interfaz lo dice abiertamente mientras
-     * `confirmada` sea false. En cuanto sepas el día: cambia el ISO y pon
-     * `confirmada: true`. Nada más hay que tocar.
+     * PENDIENTE — día exacto sin confirmar; enero 2027 es lo único cerrado.
+     * Con `confirmada: false` la invitación avisa que es una fecha estimada.
+     * Cuando sepas el día: cambia el ISO y pon `confirmada: true`.
      */
     iso: "2027-01-16T18:00:00-03:00",
     confirmada: false,
-    /** Lo que se muestra cuando la fecha aún no está cerrada. */
     aproximada: "Enero 2027",
-    /** Lo que se muestra una vez confirmada. */
     larga: "Sábado 16 de enero de 2027",
     corta: "16.01.27",
   },
 
-  frase: "Dos historias que venían caminando solas y decidieron seguir juntas.",
+  textos: {
+    encabezado: "Junto a sus familias",
+    invitan: "te invitan a su",
+    // FICTICIO — texto de ejemplo.
+    anuncio:
+      "Nos encantaría que nos acompañes en uno de los días más importantes de nuestras vidas y que lo celebres junto a nosotros.",
+  },
 
-  // FICTICIO — lugar de ejemplo. Cambia estos valores por los reales.
+  // FICTICIO — lugar de ejemplo.
   lugar: {
     nombre: "Viña Los Alerces",
     direccion: "Camino a Melipilla Km 34",
     ciudad: "Melipilla, Región Metropolitana",
-    /** URL de Google Maps para el botón "Abrir en Google Maps". */
     mapsUrl: "https://maps.google.com/?q=Melipilla+Region+Metropolitana",
-    /**
-     * Consulta de búsqueda para el mapa incrustado. Se usa el modo `place`
-     * de Google Maps Embed, que no requiere clave de API.
-     */
-    consultaMapa: "Melipilla, Región Metropolitana, Chile",
-    /**
-     * Coordenadas en grados, solo como detalle tipográfico sobre el plano.
-     * Déjalo vacío y no se dibuja. FICTICIO: son las de Melipilla, no las
-     * de un recinto concreto.
-     */
-    coordenadas: "33°41′S · 71°13′O",
-    /** FICTICIO — apuntes de logística. Lista vacía = no se muestra el bloque. */
-    notas: [
-      "45 minutos desde Santiago por la Ruta 78",
-      "Estacionamiento dentro del recinto",
-    ] as string[],
   },
 
   whatsapp: {
-    /** Formato internacional sin +, espacios ni guiones. Ej: 56912345678 */
+    /** Formato internacional sin +, espacios ni guiones. */
     numero: "56978829942",
     etiqueta: "Aaron & Jasne",
   },
 
   musica: {
-    /** Archivo real en public/music/event-song.mp3. */
     src: "/music/event-song.mp3",
     titulo: "Perfect",
     artista: "Ed Sheeran",
   },
 
-  // FICTICIO — historia de ejemplo para ver el diseño con texto real.
-  historia: [
-    {
-      numero: "01",
-      titulo: "El comienzo",
-      texto:
-        "Nos conocimos en la fila de un café que ninguno de los dos quería estar esperando. Diez minutos de conversación y ya habíamos perdido el interés en pedir algo para llevar.",
-      anio: "2021",
-    },
-    {
-      numero: "02",
-      titulo: "Nuestro camino",
-      texto:
-        "Un departamento pequeño, un perro que llegó sin avisar y la costumbre de planear viajes que casi siempre terminábamos cambiando de ruta a mitad de camino.",
-      anio: "2023",
-    },
-    {
-      numero: "03",
-      titulo: "Momentos que recordamos",
-      texto:
-        "En un mirador al que subimos por accidente, sin señal y sin plan, Aaron sacó del bolso algo que llevaba escondido hacía semanas.",
-      anio: "2026",
-    },
-    {
-      numero: "04",
-      titulo: "El gran día",
-      texto:
-        "Y ahora queremos que esa misma gente que nos vio empezar esté ahí para vernos decir que sí, esta vez frente a todos.",
-      anio: "2027",
-    },
-  ],
-
-  cronograma,
+  programa,
   galeria,
 
-  // FICTICIO — fotos de relleno de Picsum, no de Aaron y Jasne. Cámbialas
-  // por rutas en public/fotos/ cuando tengan la sesión de fotos lista.
+  /** Nombres de archivo esperados en public/fotos/. */
   fotos: {
-    portada: "https://picsum.photos/seed/aj-portada/1600/2000",
-    // Cuatro huecos: 01 lleva una, 02 una a sangre y 03 dos en diagonal.
-    historia: [
-      "https://picsum.photos/seed/aj-historia-1/1000/1250",
-      "https://picsum.photos/seed/aj-historia-2/1000/1250",
-      "https://picsum.photos/seed/aj-historia-3/1000/1250",
-      "https://picsum.photos/seed/aj-historia-4/1000/1000",
-    ] as (string | null)[],
+    /** Foto principal en arco (vertical, 3:4). */
+    portada: "/fotos/portada.jpg",
+    /** Fondo de la banda "Con amor" (horizontal). */
+    conAmor: "/fotos/con-amor.jpg",
+    /** El lugar (horizontal, 4:3). */
+    lugar: "/fotos/lugar.jpg",
+    /** Cierre "¡Gracias!" (vertical o cuadrada). */
+    cierre: "/fotos/cierre.jpg",
+    /**
+     * Flores decorativas, PNG con fondo transparente. Si no están, se dibuja
+     * una rama de hojas en su lugar.
+     */
+    floresArriba: "/fotos/flores-arriba.png",
+    floresEsquina: "/fotos/flores-esquina.png",
   },
 
-  dressCode: {
-    titulo: "Formal",
-    // FICTICIO — texto de ejemplo.
-    nota: "Traje oscuro y vestido largo o midi. Los jardines son de pasto, así que conviene pensarlo al elegir el taco.",
-    reservado: "El blanco queda para Jasne.",
+  vestimenta: {
+    titulo: "Dress code",
+    nota: "Formal. El blanco queda reservado para la novia.",
+    /** Colores sugeridos, de claro a oscuro. */
+    paleta: ["#f1ede4", "#a8ad95", "#6f7259", "#a89688", "#3d3f31"],
+  },
+
+  // FICTICIO — texto de ejemplo.
+  regalo:
+    "Tu presencia es nuestro mejor regalo. Pero si quieres hacernos un obsequio, un aporte para nuestra luna de miel será recibido con mucho cariño.",
+
+  cita: {
+    texto:
+      "Un matrimonio feliz es enamorarse muchas veces, siempre de la misma persona.",
+    autor: "Mignon McLaughlin",
   },
 
   /**
-   * FICTICIO — fecha límite de ejemplo, ajústala junto con la fecha real.
-   * Pasada esta fecha el formulario se cierra solo, así que nunca debe
-   * quedar en el pasado mientras se siga mandando la invitación.
+   * FICTICIO — fecha límite de ejemplo. Pasada esta fecha el formulario se
+   * cierra solo: nunca dejarla en el pasado mientras se mande la invitación.
    */
   rsvp: {
     cierreIso: "2027-01-02T23:59:00-03:00",
     cierreTexto: "2 de enero de 2027",
   },
-
-  // FICTICIO — contactos de ejemplo con números inventados.
-  contacto: [
-    { nombre: "Camila (organización)", telefono: "+56 9 0000 0001" },
-    { nombre: "Matías (padrino)", telefono: "+56 9 0000 0002" },
-  ],
 } as const;
 
 export type Evento = typeof evento;

@@ -9,7 +9,7 @@ import { useMovimientoReducido } from "@/hooks";
  * eje, en los colores de la invitación — parece papelería cayendo, no una
  * piñata. Se dispara una sola vez, al confirmar asistencia.
  */
-const PALETA = ["#9C5A54", "#C08A80", "#CEC5B7", "#F4F0E8", "#EAE4D9"];
+const PALETA = ["#4a4d36", "#6f7259", "#a8ad95", "#b39558", "#f5f2eb"];
 
 type Papel = {
   x: number;

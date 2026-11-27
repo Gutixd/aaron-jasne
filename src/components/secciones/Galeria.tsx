@@ -1,19 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Rombo } from "../Marca";
-import { RevelarMascara } from "../Revelar";
+import { Divisor } from "../Ornamentos";
+import Foto from "../Foto";
+import Aparecer from "../Aparecer";
 import { evento } from "@/config/event.config";
 import { medir } from "@/lib/analytics";
 
-const silk = [0.22, 1, 0.36, 1] as const;
-
-/** Alturas del mosaico. Los pesos vienen de la configuración y rompen la reja. */
-const alto = { 1: "h-[15rem] sm:h-[19rem]", 2: "h-[21rem] sm:h-[27rem]", 3: "h-[27rem] sm:h-[34rem]" };
+/** Proporciones alternadas: dan el mosaico irregular de la referencia. */
+const PROPORCION = ["aspect-[3/4]", "aspect-[4/5]", "aspect-square", "aspect-[4/5]", "aspect-[3/4]", "aspect-square"];
 
 export default function Galeria() {
-  const fotos = evento.galeria;
+  const { galeria } = evento;
   const [abierta, setAbierta] = useState<number | null>(null);
-  const [encima, setEncima] = useState<number | null>(null);
 
   const abrir = (i: number) => {
     setAbierta(i);
@@ -21,120 +19,68 @@ export default function Galeria() {
   };
 
   return (
-    <section id="galeria" className="bg-hueso px-6 py-24 sm:py-32">
-      <div className="mx-auto max-w-6xl">
-        {/* Cabecera desalineada a propósito: el título abajo a la derecha
-            del rótulo, no uno encima del otro y centrados. */}
-        <div className="mb-14 flex flex-wrap items-end justify-between gap-6">
-          <div>
-            <span className="eyebrow flex items-center gap-3 text-[0.58rem] text-rosa">
-              <Rombo tam={7} />
-              Nosotros
-            </span>
-            <h2 className="mt-5 font-display text-[clamp(2.2rem,6vw,4rem)] leading-none">
-              <RevelarMascara>Retratos</RevelarMascara>
-            </h2>
-          </div>
-          <p className="eyebrow max-w-[15rem] text-[0.55rem] leading-[2] text-tinta-suave/70">
-            Toca cualquiera para verla completa
-          </p>
-        </div>
+    <section id="galeria" className="papel relative overflow-hidden px-5 pb-14 pt-6 text-center">
+      <Aparecer>
+        <h2 className="titular text-[2.3rem] text-oliva-hondo">Galería</h2>
+        <Divisor className="mt-3 text-oliva" />
+      </Aparecer>
 
-        {/* Columnas de mosaico: cada foto conserva su alto, sin recortes forzados. */}
-        <div
-          className="columns-2 gap-3 sm:gap-4 lg:columns-3"
-          onMouseLeave={() => setEncima(null)}
-        >
-          {fotos.map((f, i) => (
-            <motion.button
-              key={i}
+      <div className="mx-auto mt-8 max-w-[24rem] columns-2 gap-2.5">
+        {galeria.map((f, i) => (
+          <Aparecer key={f.src} delay={(i % 2) * 0.08} className="mb-2.5 break-inside-avoid">
+            <button
               type="button"
               onClick={() => abrir(i)}
-              onMouseEnter={() => setEncima(i)}
-              aria-label={`Abrir fotografía ${i + 1}`}
-              className={`group relative mb-3 block w-full cursor-pointer overflow-hidden sm:mb-4 ${
-                alto[f.peso ?? 1]
-              }`}
-              initial={{ opacity: 0, y: 40, scale: 0.97 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
-              viewport={{ once: true, amount: 0.2 }}
-              transition={{ duration: 1.1, delay: (i % 3) * 0.1, ease: silk }}
-              // Las hermanas se apagan cuando una está bajo el cursor.
-              animate={{ opacity: encima === null || encima === i ? 1 : 0.45 }}
+              aria-label={`Ver foto ${i + 1}`}
+              className="block w-full overflow-hidden shadow-[0_8px_18px_-12px_rgba(58,59,47,0.7)]"
             >
-              {f.src ? (
-                <img
-                  src={f.src}
-                  alt={f.alt}
-                  loading="lazy"
-                  decoding="async"
-                  className="h-full w-full object-cover transition-transform duration-[900ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-[1.06]"
-                />
-              ) : (
-                <span className="flex h-full w-full flex-col items-center justify-center gap-4 bg-hueso-hondo text-piedra transition-colors duration-500 group-hover:bg-piedra/30">
-                  <Rombo tam={14} />
-                  <span className="eyebrow text-[0.45rem] opacity-70">
-                    {String(i + 1).padStart(2, "0")}
-                  </span>
-                </span>
-              )}
-
-              {f.caption && (
-                <span className="pointer-events-none absolute inset-x-0 bottom-0 translate-y-full bg-[linear-gradient(to_top,rgba(11,13,17,0.85),transparent)] px-4 pb-4 pt-10 text-left transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:translate-y-0">
-                  <span className="eyebrow text-[0.5rem] text-hueso">{f.caption}</span>
-                </span>
-              )}
-            </motion.button>
-          ))}
-        </div>
+              <Foto src={f.src} alt={f.alt} className={`${PROPORCION[i % PROPORCION.length]} w-full`} />
+            </button>
+          </Aparecer>
+        ))}
       </div>
 
-      <Visor
-        indice={abierta}
-        total={fotos.length}
-        onCerrar={() => setAbierta(null)}
-        onIr={(i) => {
-          setAbierta(i);
-          medir("galeria_navegada", { indice: i });
-        }}
-      />
+      <Aparecer>
+        <button
+          type="button"
+          onClick={() => abrir(0)}
+          className="rotulo mt-6 rounded-sm bg-oliva px-7 py-3 text-[0.72rem] text-papel-claro shadow-[0_6px_14px_-8px_rgba(56,59,42,0.9)] transition-colors hover:bg-oliva-hondo"
+        >
+          Ver todas las fotos
+        </button>
+      </Aparecer>
+
+      <Visor indice={abierta} onCerrar={() => setAbierta(null)} onIr={setAbierta} />
     </section>
   );
 }
 
-/* ─────────────────────────────────────────────────────────────────── visor */
+/* ─────────────────────────────────────────────────────────────── visor */
 
 function Visor({
   indice,
-  total,
   onCerrar,
   onIr,
 }: {
   indice: number | null;
-  total: number;
   onCerrar: () => void;
   onIr: (i: number) => void;
 }) {
+  const total = evento.galeria.length;
   const abierto = indice !== null;
 
-  const anterior = useCallback(() => {
-    if (indice !== null) onIr((indice - 1 + total) % total);
-  }, [indice, total, onIr]);
+  const mover = useCallback(
+    (d: number) => indice !== null && onIr((indice + d + total) % total),
+    [indice, onIr, total],
+  );
 
-  const siguiente = useCallback(() => {
-    if (indice !== null) onIr((indice + 1) % total);
-  }, [indice, total, onIr]);
-
-  // Teclado: flechas para navegar, Escape para salir.
   useEffect(() => {
     if (!abierto) return;
-
     const tecla = (e: KeyboardEvent) => {
       if (e.key === "Escape") onCerrar();
-      if (e.key === "ArrowLeft") anterior();
-      if (e.key === "ArrowRight") siguiente();
+      if (e.key === "ArrowLeft") mover(-1);
+      if (e.key === "ArrowRight") mover(1);
     };
-
     const previo = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", tecla);
@@ -142,107 +88,71 @@ function Visor({
       document.body.style.overflow = previo;
       window.removeEventListener("keydown", tecla);
     };
-  }, [abierto, onCerrar, anterior, siguiente]);
-
-  const foto = indice !== null ? evento.galeria[indice] : null;
+  }, [abierto, onCerrar, mover]);
 
   return (
     <AnimatePresence>
-      {abierto && foto && (
+      {abierto && (
         <motion.div
-          className="fixed inset-0 z-[95] flex flex-col bg-noche/97 backdrop-blur-sm"
+          className="fixed inset-0 z-[80] flex flex-col bg-oliva-hondo/97"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease: silk }}
           role="dialog"
           aria-modal="true"
-          aria-label="Visor de fotografías"
+          aria-label="Fotos"
         >
-          <div className="flex items-center justify-between px-6 py-5 text-hueso sm:px-10">
-            <span className="eyebrow text-[0.55rem] text-hueso/50 tabular-nums">
-              {String(indice + 1).padStart(2, "0")} / {String(total).padStart(2, "0")}
+          <div className="flex items-center justify-between px-5 py-4 text-papel-claro">
+            <span className="rotulo text-[0.68rem] tabular-nums opacity-70">
+              {indice + 1} / {total}
             </span>
-            <button
-              type="button"
-              onClick={onCerrar}
-              aria-label="Cerrar"
-              className="eyebrow cursor-pointer text-[0.55rem] text-hueso/60 transition-colors hover:text-rosa-claro"
-            >
+            <button type="button" onClick={onCerrar} className="rotulo text-[0.68rem] opacity-80">
               Cerrar ✕
             </button>
           </div>
 
-          <div className="relative flex flex-1 items-center justify-center overflow-hidden px-4 pb-4 sm:px-20">
+          <div className="relative flex flex-1 items-center justify-center px-4 pb-6">
             <AnimatePresence mode="wait">
               <motion.div
                 key={indice}
-                className="flex max-h-full max-w-full touch-pan-y items-center justify-center"
-                initial={{ opacity: 0, scale: 0.94 }}
+                className="w-full max-w-[26rem] touch-pan-y"
+                initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 1.04 }}
-                transition={{ duration: 0.55, ease: silk }}
-                // En el teléfono se pasa de foto deslizando, que es el gesto
-                // que todos esperan. 60 px o un golpe rápido cuentan.
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.35 }}
                 drag="x"
                 dragConstraints={{ left: 0, right: 0 }}
                 dragElastic={0.35}
                 onDragEnd={(_, info) => {
-                  if (info.offset.x < -60 || info.velocity.x < -400) siguiente();
-                  else if (info.offset.x > 60 || info.velocity.x > 400) anterior();
+                  if (info.offset.x < -60 || info.velocity.x < -400) mover(1);
+                  else if (info.offset.x > 60 || info.velocity.x > 400) mover(-1);
                 }}
               >
-                {foto.src ? (
-                  <img
-                    src={foto.src}
-                    alt={foto.alt}
-                    draggable={false}
-                    className="max-h-[72svh] w-auto max-w-full select-none object-contain"
-                  />
-                ) : (
-                  <span className="flex aspect-[3/4] w-[min(78vw,26rem)] flex-col items-center justify-center gap-6 border border-hueso/12 text-hueso/25">
-                    <Rombo tam={22} />
-                    <span className="eyebrow text-[0.5rem]">Fotografía pendiente</span>
-                  </span>
-                )}
+                <Foto
+                  src={evento.galeria[indice].src}
+                  alt={evento.galeria[indice].alt}
+                  className="max-h-[75svh] w-full object-contain"
+                  oscuro
+                />
               </motion.div>
             </AnimatePresence>
 
-            <Flecha lado="izq" onClick={anterior} />
-            <Flecha lado="der" onClick={siguiente} />
-          </div>
-
-          <div className="px-6 pb-8 text-center sm:px-10">
-            {foto.caption && (
-              <p className="font-display text-lg italic text-hueso/70">{foto.caption}</p>
-            )}
+            {(["izq", "der"] as const).map((lado) => (
+              <button
+                key={lado}
+                type="button"
+                onClick={() => mover(lado === "izq" ? -1 : 1)}
+                aria-label={lado === "izq" ? "Anterior" : "Siguiente"}
+                className={`absolute top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-papel-claro/40 bg-oliva-hondo/60 text-papel-claro ${
+                  lado === "izq" ? "left-2" : "right-2"
+                }`}
+              >
+                {lado === "izq" ? "‹" : "›"}
+              </button>
+            ))}
           </div>
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-function Flecha({ lado, onClick }: { lado: "izq" | "der"; onClick: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={lado === "izq" ? "Anterior" : "Siguiente"}
-      // Fondo oscuro translúcido: en móvil la flecha queda encima de la foto
-      // y con fondo transparente desaparecía sobre cualquier imagen clara.
-      className={`absolute top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 cursor-pointer items-center justify-center rounded-full border border-hueso/30 bg-noche/55 text-hueso/90 backdrop-blur-sm transition-colors hover:border-rosa hover:bg-rosa hover:text-hueso ${
-        lado === "izq" ? "left-2 sm:left-6" : "right-2 sm:right-6"
-      }`}
-    >
-      <svg width="9" height="15" viewBox="0 0 9 15" aria-hidden>
-        <path
-          d={lado === "izq" ? "M8 1 L1.5 7.5 L8 14" : "M1 1 L7.5 7.5 L1 14"}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.1"
-        />
-      </svg>
-    </button>
   );
 }

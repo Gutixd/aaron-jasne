@@ -1,128 +1,109 @@
-import { useRef } from "react";
-import { motion, useScroll, useTransform } from "framer-motion";
-import { Rombo } from "../Marca";
-import { LineaMascaraAlMontar } from "../Revelar";
-import { evento, textoFecha } from "@/config/event.config";
-import { useMovimientoReducido } from "@/hooks";
+import { motion } from "framer-motion";
+import { Corazon, Divisor, Flores, BordeRasgado } from "../Ornamentos";
+import Foto from "../Foto";
+import Aparecer from "../Aparecer";
+import { evento } from "@/config/event.config";
 
-const silk = [0.22, 1, 0.36, 1] as const;
+const suave = [0.22, 1, 0.36, 1] as const;
 
 /**
- * Portada. Composición deliberadamente descentrada: los nombres se apoyan
- * en el borde izquierdo y se salen un poco del margen, la fecha corre en
- * vertical por el canto derecho. Nada está centrado — el centro perfecto es
- * lo que hace que una portada parezca una plantilla.
+ * Portada: rótulo, nombres en serif mayúscula con la "y" manuscrita,
+ * "te invitan a su Boda" y la foto principal en arco con flores.
+ * Debajo, el anuncio "Nos casamos" con el texto de invitación.
  */
 export default function Portada() {
-  const ref = useRef<HTMLElement>(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const reducido = useMovimientoReducido();
-
-  const fondoY = useTransform(scrollYProgress, [0, 1], ["0%", "22%"]);
-  const fondoEscala = useTransform(scrollYProgress, [0, 1], [1, 1.14]);
-  const textoY = useTransform(scrollYProgress, [0, 1], ["0%", "-38%"]);
-  const textoOpacidad = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+  const { pareja, textos, fotos } = evento;
 
   return (
-    <section
-      id="portada"
-      ref={ref}
-      className="relative flex h-[100svh] w-full items-end overflow-hidden bg-noche text-hueso"
-    >
-      <motion.div style={{ y: fondoY, scale: fondoEscala }} className="absolute inset-0">
-        {evento.fotos.portada ? (
-          <img
-            src={evento.fotos.portada}
-            alt=""
-            className="h-full w-full object-cover"
-            fetchPriority="high"
-          />
-        ) : (
-          <div className="absolute inset-0 bg-[radial-gradient(130%_100%_at_25%_20%,#242a33_0%,#161a21_45%,#0b0d11_100%)]" />
-        )}
-        {/* Degradado bajo el texto: garantiza contraste cuando haya foto.
-            En móvil el bloque de texto sube hasta casi la mitad de la
-            pantalla, así que la zona oscura tiene que llegar hasta ahí: con
-            0.45 al 38% el rótulo desaparecía sobre una foto clara. */}
-        <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(11,13,17,0.94)_0%,rgba(11,13,17,0.74)_30%,rgba(11,13,17,0.5)_50%,rgba(11,13,17,0.16)_74%,rgba(11,13,17,0.5)_100%)]" />
-      </motion.div>
-
-      {/* Fecha en vertical por el canto derecho. */}
-      <motion.div
-        className="absolute right-5 top-1/2 hidden -translate-y-1/2 sm:block"
-        style={{ opacity: textoOpacidad }}
-        initial={{ opacity: 0, y: "-40%" }}
-        animate={{ opacity: 1, y: "-50%" }}
-        transition={{ duration: 1.4, delay: 0.9, ease: silk }}
+    <section id="inicio" className="papel relative overflow-hidden px-6 pb-14 pt-14 text-center">
+      <motion.p
+        className="rotulo mx-auto max-w-[14rem] text-[0.72rem] leading-[1.7] text-tinta-suave"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, ease: suave }}
       >
-        <p
-          className="eyebrow text-[0.58rem] text-hueso/45"
-          style={{ writingMode: "vertical-rl" }}
-        >
-          {textoFecha()}
-          {!evento.fecha.confirmada && " · fecha por confirmar"}
-        </p>
-      </motion.div>
+        {textos.encabezado}
+      </motion.p>
 
-      <motion.div
-        style={{ y: textoY, opacity: textoOpacidad }}
-        className="relative z-10 w-full px-6 pb-20 sm:px-12 sm:pb-24"
+      <motion.span
+        className="mt-3 inline-block text-oliva"
+        initial={{ opacity: 0, scale: 0.4 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.8, delay: 0.3, ease: suave }}
       >
+        <Corazon tam={10} />
+      </motion.span>
+
+      <h1 className="mt-5 text-oliva-hondo">
         <motion.span
-          className="eyebrow mb-6 flex items-center gap-3 text-[0.58rem] text-rosa-claro [text-shadow:0_1px_8px_rgba(11,13,17,0.7)]"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 1.2, delay: 0.4, ease: silk }}
-        >
-          <Rombo tam={7} />
-          Nos casamos
-        </motion.span>
-
-        {/* Se sale ligeramente del margen izquierdo: gesto editorial.
-            El desahogo de la máscara reserva sitio para la cola de la "J"
-            de Jasne, que con este interlineado cerrado quedaría cortada. */}
-        <h1 className="-ml-[0.06em] font-display leading-[0.82]">
-          {[evento.pareja.uno, evento.pareja.dos].map((nombre, i) => (
-            <LineaMascaraAlMontar
-              key={nombre}
-              className="text-[clamp(3.6rem,17vw,12rem)]"
-              delay={0.25 + i * 0.2}
-              duracion={1.5}
-              desahogo="0.24em"
-            >
-              {i === 1 ? <span className="italic">{nombre}</span> : nombre}
-            </LineaMascaraAlMontar>
-          ))}
-        </h1>
-
-        <motion.p
-          className="mt-8 max-w-md font-display text-lg italic leading-relaxed text-hueso/60 sm:text-xl"
-          initial={{ opacity: 0, y: 22 }}
+          className="titular block text-[clamp(3rem,15vw,4.2rem)]"
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, delay: 1.1, ease: silk }}
+          transition={{ duration: 1.1, delay: 0.35, ease: suave }}
         >
-          {evento.frase}
-        </motion.p>
-      </motion.div>
+          {pareja.uno}
+        </motion.span>
+        <motion.span
+          className="manuscrita block -my-1 text-[clamp(2.2rem,11vw,3rem)] text-oliva"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 1.2, delay: 0.7 }}
+        >
+          y
+        </motion.span>
+        <motion.span
+          className="titular block text-[clamp(3rem,15vw,4.2rem)]"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1.1, delay: 0.55, ease: suave }}
+        >
+          {pareja.dos}
+        </motion.span>
+      </h1>
 
-      <motion.a
-        href="#cuenta"
-        // Solo desde sm: en móvil esa esquina es del botón de música y se
-        // pisaban. En el teléfono deslizar es obvio y no hace falta el aviso.
-        className="absolute bottom-8 right-12 hidden flex-col items-center gap-3 text-hueso/40 transition-colors hover:text-rosa-claro sm:flex"
-        aria-label="Bajar"
+      <motion.p
+        className="rotulo mt-7 text-[0.74rem] text-tinta"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ duration: 1, delay: 1.8 }}
-        style={{ opacity: textoOpacidad }}
+        transition={{ duration: 1, delay: 0.9 }}
       >
-        <span className="eyebrow text-[0.5rem]">Desliza</span>
-        <motion.span
-          className="block h-12 w-px origin-top bg-current"
-          animate={reducido ? undefined : { scaleY: [0.25, 1, 0.25] }}
-          transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut" }}
+        {textos.invitan}
+      </motion.p>
+      <motion.p
+        className="manuscrita mt-1 text-[clamp(2.8rem,14vw,3.6rem)] text-oliva-hondo"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1.2, delay: 1.05, ease: suave }}
+      >
+        Boda
+      </motion.p>
+
+      {/* Foto en arco con filete dorado y flores que la abrazan. */}
+      <motion.div
+        className="relative mx-auto mt-8 w-[82%] max-w-[20rem]"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1.3, delay: 1.2, ease: suave }}
+      >
+        <span
+          aria-hidden
+          className="absolute -inset-2 rounded-t-full border border-dorado/70"
         />
-      </motion.a>
+        <div className="relative aspect-[3/4] overflow-hidden rounded-t-full">
+          <Foto src={fotos.portada} alt={`${pareja.uno} y ${pareja.dos}`} className="h-full w-full" prioridad />
+          <BordeRasgado lado="arriba" fondo="papel" className="absolute inset-x-0 -bottom-px" />
+        </div>
+        <Flores src={fotos.floresEsquina} className="absolute -bottom-6 -left-10 w-28" />
+        <Flores src={fotos.floresEsquina} className="absolute -bottom-6 -right-10 w-28" espejo />
+      </motion.div>
+
+      <Aparecer className="mt-14">
+        <p className="manuscrita text-[2.3rem] text-oliva">Nos</p>
+        <h2 className="titular -mt-1 text-[2.2rem] text-oliva-hondo">casamos</h2>
+        <Divisor className="mt-4 text-oliva" />
+        <p className="mx-auto mt-5 max-w-[19rem] text-[1.08rem] leading-[1.6]">{textos.anuncio}</p>
+        <Divisor className="mt-6 text-oliva" />
+      </Aparecer>
     </section>
   );
 }

@@ -1,80 +1,68 @@
 @import "tailwindcss";
 
-@import "@fontsource/instrument-serif/400.css";
-@import "@fontsource/instrument-serif/400-italic.css";
-@import "@fontsource-variable/jost";
+@import "@fontsource/cormorant-garamond/400.css";
+@import "@fontsource/cormorant-garamond/500.css";
+@import "@fontsource/cormorant-garamond/600.css";
+@import "@fontsource/cormorant-garamond/400-italic.css";
+@import "@fontsource/pinyon-script/400.css";
 
 /*
- * Sistema de Aaron & Jasne.
- *
- * Dos mundos: la noche (entrada, portada, confirmación) y el papel (todo el
- * relato). El acento es un rosa seco, no dorado — el dorado es el lugar
- * común de toda invitación de boda y aquí queríamos otra cosa.
+ * Aaron & Jasne — estilo "jardín": papel crema envejecido, verde oliva
+ * profundo y un dorado apagado. Tres voces tipográficas:
+ *   · serif clásica en mayúsculas para nombres y títulos (Cormorant)
+ *   · manuscrita para los acentos emocionales (Pinyon Script)
+ *   · versalitas espaciadas para los rótulos pequeños
  */
 @theme {
-  --color-noche: #0e1116;
-  --color-noche-alto: #171b22;
-  --color-hueso: #f4f0e8;
-  --color-hueso-hondo: #eae4d9;
-  --color-tinta: #191b1f;
-  --color-tinta-suave: #6c6862;
-  --color-rosa: #9c5a54;
-  --color-rosa-claro: #c08a80;
-  --color-piedra: #cec5b7;
+  --color-oliva: #4a4d36;
+  --color-oliva-hondo: #383b2a;
+  --color-oliva-claro: #6f7259;
+  --color-salvia: #a8ad95;
+  --color-papel: #eee9df;
+  --color-papel-claro: #f5f2eb;
+  --color-tinta: #3a3b2f;
+  --color-tinta-suave: #6b6a5c;
+  --color-dorado: #b39558;
+  --color-dorado-claro: #d2bd8c;
+  --color-linea: #c3bca9;
 
-  --font-display: "Instrument Serif", ui-serif, Georgia, serif;
-  --font-sans: "Jost Variable", "Jost", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Cormorant Garamond", ui-serif, Georgia, serif;
+  --font-script: "Pinyon Script", "Cormorant Garamond", cursive;
 }
 
 @layer base {
-  /*
-   * Red de seguridad contra el scroll horizontal. Varias secciones esperan
-   * desplazadas en X antes de entrar en pantalla; si alguna se escapa de su
-   * contenedor, esto lo recorta. `clip` y no `hidden` porque `hidden` crea
-   * un contenedor de scroll y rompería cualquier `position: sticky`.
-   */
   html {
     -webkit-text-size-adjust: 100%;
     overflow-x: clip;
+    scroll-behavior: smooth;
   }
 
-  /* Al saltar a una sección desde el menú, la barra fija tapaba su
-     comienzo. Este margen deja el título justo debajo de la barra. */
-  section[id] {
-    scroll-margin-top: 4.5rem;
-  }
-
+  /* En escritorio la invitación es una columna sobre fondo oliva, como la
+     tarjeta de la referencia. En el celular la columna ocupa todo. */
   body {
     margin: 0;
-    background-color: var(--color-hueso);
+    background-color: var(--color-oliva-hondo);
     color: var(--color-tinta);
-    font-family: var(--font-sans);
-    font-weight: 300;
+    font-family: var(--font-serif);
+    font-weight: 500;
+    font-size: 17px;
+    line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow-x: clip;
   }
 
-  /* Instrument Serif solo tiene un peso. Nunca lo falseamos con negrita
-     sintética: parte de su carácter es esa voz única. */
-  h1,
-  h2,
-  h3 {
-    font-family: var(--font-display);
-    font-weight: 400;
-    letter-spacing: -0.015em;
-    /* Instrument Serif trae un espacio entre palabras muy estrecho y el
-       interletrado negativo lo achica más: "El comienzo" casi se pegaba. */
-    word-spacing: 0.08em;
+  section[id] {
+    scroll-margin-top: 1rem;
   }
 
   ::selection {
-    background-color: var(--color-rosa);
-    color: var(--color-hueso);
+    background-color: var(--color-oliva);
+    color: var(--color-papel-claro);
   }
 
   :focus-visible {
-    outline: 1px solid var(--color-rosa);
+    outline: 1.5px solid var(--color-dorado);
     outline-offset: 3px;
   }
 
@@ -87,53 +75,74 @@
   }
 }
 
-@utility eyebrow {
-  font-family: var(--font-sans);
-  font-size: 0.6875rem;
-  font-weight: 400;
-  letter-spacing: 0.3em;
+/* Rótulo en versalitas espaciadas: "JUNTO A SUS FAMILIAS", "LUGAR"… */
+@utility rotulo {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 0.78rem;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
 }
 
-/* Grano de película sobre toda la experiencia. Es el detalle que separa
-   "página web" de "pieza impresa". */
-@utility grano {
-  position: fixed;
-  inset: 0;
-  z-index: 9998;
-  pointer-events: none;
-  opacity: 0.04;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)'/%3E%3C/svg%3E");
+/* Títulos grandes en mayúscula: los nombres, "NOS CASAMOS", "LUGAR". */
+@utility titular {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  line-height: 0.95;
+}
+
+@utility manuscrita {
+  font-family: var(--font-script);
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.1;
+}
+
+/*
+ * Papel envejecido. Tres capas: grano fino, manchas suaves que imitan la
+ * fibra irregular del papel hecho a mano, y el tono crema de base.
+ */
+@utility papel {
+  background-color: var(--color-papel);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.32 0 0 0 0 0.24 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.5 0 0 0 0 0.38 0 0 0 0.11 0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)'/%3E%3C/svg%3E");
+}
+
+/* Mismo papel pero teñido de oliva, para las bandas oscuras. */
+@utility papel-oliva {
+  background-color: var(--color-oliva);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.1 0 0 0 0 0.1 0 0 0 0 0.06 0 0 0 0.14 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23g)'/%3E%3C/svg%3E"),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='600' height='600'%3E%3Cfilter id='m'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.01' numOctaves='3' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 0.18 0 0 0 0 0.19 0 0 0 0 0.12 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='600' height='600' filter='url(%23m)'/%3E%3C/svg%3E");
 }
 
 @utility campo {
   width: 100%;
   border: 0;
-  border-bottom: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-bottom: 1px solid var(--color-linea);
   background: transparent;
-  padding: 0.75rem 0;
-  font-weight: 300;
+  padding: 0.6rem 0;
+  font-size: 1.05rem;
   outline: none;
-  transition: border-color 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: border-color 0.3s ease;
 }
 @utility campo {
   &:focus {
-    border-bottom-color: var(--color-rosa);
+    border-bottom-color: var(--color-oliva);
   }
   &::placeholder {
-    color: color-mix(in srgb, currentColor 38%, transparent);
-  }
-}
-
-/* El cursor propio solo existe en escritorio con puntero fino. */
-@media (pointer: fine) {
-  .cursor-oculto,
-  .cursor-oculto * {
-    cursor: none;
+    color: color-mix(in srgb, var(--color-tinta-suave) 60%, transparent);
+    font-style: italic;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   *,
   *::before,
   *::after {

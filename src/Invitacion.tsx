@@ -1,76 +1,73 @@
 import { useEffect, useState } from "react";
 import Lenis from "lenis";
 
-import Portal from "./components/Portal";
+import Sobre from "./components/Sobre";
 import Musica from "./components/Musica";
-import Cursor from "./components/Cursor";
-import Navegacion, { Progreso } from "./components/Navegacion";
 
 import Portada from "./components/secciones/Portada";
-import Cuenta from "./components/secciones/Cuenta";
-import Historia from "./components/secciones/Historia";
+import Fecha from "./components/secciones/Fecha";
+import ConAmor from "./components/secciones/ConAmor";
+import Programa from "./components/secciones/Programa";
+import DressCode from "./components/secciones/DressCode";
+import Cita from "./components/secciones/Cita";
+import Lugar from "./components/secciones/Lugar";
 import Galeria from "./components/secciones/Galeria";
-import GranDia from "./components/secciones/GranDia";
-import Cronograma from "./components/secciones/Cronograma";
-import Llegar from "./components/secciones/Llegar";
 import Confirmar from "./components/secciones/Confirmar";
-import CierreSeccion from "./components/secciones/Cierre";
+import Cierre from "./components/secciones/Cierre";
 
 import { medir } from "@/lib/analytics";
 import { useMovimientoReducido } from "@/hooks";
 
+/**
+ * La invitación es una sola columna, pensada primero para el celular. En
+ * pantallas grandes la columna queda centrada sobre el fondo oliva, como la
+ * tarjeta de la referencia, en vez de estirarse.
+ *
+ * Orden: el de la referencia leída de arriba abajo — portada, fecha, banda
+ * "con amor", programa, dress code, cita, lugar, galería — más la
+ * confirmación de asistencia y el cierre.
+ */
 export default function Invitacion() {
-  const [entrado, setEntrado] = useState(false);
+  const [abierta, setAbierta] = useState(false);
   const reducido = useMovimientoReducido();
 
-  /**
-   * Desplazamiento suave con Lenis. Se activa solo en escritorio con ratón:
-   * en táctil el scroll nativo del sistema ya es bueno e interceptarlo se
-   * siente mal. Y con movimiento reducido no se monta en absoluto.
-   */
+  // Scroll suave solo con ratón; en táctil el nativo es mejor.
   useEffect(() => {
-    if (reducido) return;
-    if (window.matchMedia("(pointer: coarse)").matches) return;
-
+    if (reducido || window.matchMedia("(pointer: coarse)").matches) return;
     const lenis = new Lenis({ duration: 1.05, smoothWheel: true });
     let frame = 0;
-
     const bucle = (t: number) => {
       lenis.raf(t);
       frame = requestAnimationFrame(bucle);
     };
     frame = requestAnimationFrame(bucle);
-
     return () => {
       cancelAnimationFrame(frame);
       lenis.destroy();
     };
   }, [reducido]);
 
-  const entrar = () => {
-    setEntrado(true);
-    medir("entrar_experiencia");
-  };
-
   return (
     <>
-      <span className="grano" aria-hidden />
-      <Cursor />
-      <Portal onEntrar={entrar} />
-      <Musica arrancar={entrado} />
-      <Progreso />
-      <Navegacion />
+      <Sobre
+        onAbrir={() => {
+          setAbierta(true);
+          medir("entrar_experiencia");
+        }}
+      />
+      <Musica arrancar={abierta} />
 
-      <main>
+      <main className="papel mx-auto w-full max-w-[30rem] shadow-[0_0_60px_rgba(0,0,0,0.35)]">
         <Portada />
-        <Cuenta />
-        <Historia />
+        <Fecha />
+        <ConAmor />
+        <Programa />
+        <DressCode />
+        <Cita />
+        <Lugar />
         <Galeria />
-        <GranDia />
-        <Cronograma />
-        <Llegar />
         <Confirmar />
-        <CierreSeccion />
+        <Cierre />
       </main>
     </>
   );

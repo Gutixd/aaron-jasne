@@ -98,15 +98,15 @@ export default function Musica({ arrancar }: { arrancar: boolean }) {
             animate={{ opacity: 1, x: 0, width: "auto" }}
             exit={{ opacity: 0, x: 14, width: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="hidden overflow-hidden whitespace-nowrap rounded-full bg-noche/85 px-5 py-3 backdrop-blur-sm sm:block"
+            className="hidden overflow-hidden whitespace-nowrap rounded-full bg-oliva-hondo/90 px-5 py-3 backdrop-blur-sm sm:block"
           >
             {evento.musica.titulo ? (
-              <p className="eyebrow text-[0.55rem] text-hueso/70">
+              <p className="rotulo text-[0.62rem] text-papel-claro/80">
                 {evento.musica.titulo}
                 {evento.musica.artista && ` · ${evento.musica.artista}`}
               </p>
             ) : (
-              <p className="eyebrow text-[0.55rem] text-hueso/50">Música</p>
+              <p className="rotulo text-[0.62rem] text-papel-claro/60">Música</p>
             )}
             <input
               type="range"
@@ -116,7 +116,7 @@ export default function Musica({ arrancar }: { arrancar: boolean }) {
               value={volumen}
               onChange={(e) => setVolumen(Number(e.target.value))}
               aria-label="Volumen"
-              className="mt-2 h-[3px] w-28 cursor-pointer appearance-none rounded bg-hueso/25 accent-[#9C5A54]"
+              className="mt-2 h-[3px] w-28 cursor-pointer appearance-none rounded bg-papel-claro/25 accent-[#b39558]"
             />
           </motion.div>
         )}
@@ -129,7 +129,7 @@ export default function Musica({ arrancar }: { arrancar: boolean }) {
         aria-pressed={sonando}
         // El borde claro lo separa del fondo en las secciones oscuras, donde
         // un botón negro sobre negro prácticamente desaparecía.
-        className="relative flex h-13 w-13 cursor-pointer items-center justify-center rounded-full border border-hueso/25 bg-noche text-hueso shadow-[0_10px_30px_-8px_rgba(14,17,22,0.6)] transition-colors hover:bg-rosa"
+        className="relative flex h-13 w-13 cursor-pointer items-center justify-center rounded-full border border-papel-claro/40 bg-oliva text-papel-claro shadow-[0_10px_24px_-8px_rgba(40,42,30,0.7)] transition-colors hover:bg-oliva-hondo"
         style={{ width: 52, height: 52 }}
       >
         {/* Ondas que salen del botón mientras suena. */}
@@ -138,7 +138,7 @@ export default function Musica({ arrancar }: { arrancar: boolean }) {
             {[0, 1].map((i) => (
               <motion.span
                 key={i}
-                className="absolute inset-0 rounded-full border border-rosa-claro/50"
+                className="absolute inset-0 rounded-full border border-dorado-claro/60"
                 animate={{ scale: [1, 1.75], opacity: [0.6, 0] }}
                 transition={{
                   duration: 2.6,

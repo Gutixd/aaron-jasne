@@ -1,30 +1,17 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Rombo, Separador } from "../Marca";
-import { RevelarMascara } from "../Revelar";
+import { Corazon, Divisor } from "../Ornamentos";
+import Aparecer from "../Aparecer";
 import Confeti from "../Confeti";
-import { evento, textoFecha } from "@/config/event.config";
+import { evento } from "@/config/event.config";
 import { hayWhatsapp, mensajeConfirmacion, urlWhatsapp } from "@/lib/whatsapp";
 import { medir } from "@/lib/analytics";
-
-const silk = [0.22, 1, 0.36, 1] as const;
 
 type Asistencia = "si" | "no";
 type Estado = "formulario" | "enviando" | "listo";
 
-/** Endpoint PHP en el mismo dominio (Hostinger). En local lo sirve el proxy de Vite. */
+/** Endpoint PHP en el mismo dominio. En local lo atiende el proxy de Vite. */
 const API_CONFIRMAR = "/api/confirmar.php";
-
-/** El texto que viaja por WhatsApp, armado desde lo que llenó el invitado. */
-const textoRespuesta = (d: Datos) =>
-  mensajeConfirmacion({
-    nombre: d.nombre.trim(),
-    asiste: d.asistencia === "si",
-    acompanantes: d.asistencia === "si" ? d.acompanantes : 0,
-    telefono: d.telefono.trim(),
-    alimentacion: d.asistencia === "si" ? d.alimentacion.trim() : "",
-    mensaje: d.mensaje.trim(),
-  });
 
 type Datos = {
   nombre: string;
@@ -44,13 +31,26 @@ const inicial: Datos = {
   mensaje: "",
 };
 
+const textoRespuesta = (d: Datos) =>
+  mensajeConfirmacion({
+    nombre: d.nombre.trim(),
+    asiste: d.asistencia === "si",
+    acompanantes: d.asistencia === "si" ? d.acompanantes : 0,
+    telefono: d.telefono.trim(),
+    alimentacion: d.asistencia === "si" ? d.alimentacion.trim() : "",
+    mensaje: d.mensaje.trim(),
+  });
+
+const boton =
+  "rotulo rounded-sm bg-oliva px-7 py-3.5 text-[0.74rem] text-papel-claro shadow-[0_6px_14px_-8px_rgba(56,59,42,0.9)] transition-colors hover:bg-oliva-hondo disabled:cursor-not-allowed disabled:opacity-50";
+
 export default function Confirmar() {
   const [d, setD] = useState<Datos>(inicial);
   const [estado, setEstado] = useState<Estado>("formulario");
   const [error, setError] = useState<string | null>(null);
-  // Si el servidor falla, se ofrece WhatsApp para que el invitado no quede atascado.
+  // Si el servidor falla, se ofrece WhatsApp para que nadie quede atascado.
   const [respaldo, setRespaldo] = useState(false);
-  // true = la respuesta NO quedó en la base; viaja solo por WhatsApp.
+  // true = la respuesta NO quedó guardada; viaja solo por WhatsApp.
   const [porWhatsapp, setPorWhatsapp] = useState(false);
   const [trampa, setTrampa] = useState("");
   const [iniciado, setIniciado] = useState(false);
@@ -64,12 +64,8 @@ export default function Confirmar() {
   };
 
   const cerrado = Date.now() > new Date(evento.rsvp.cierreIso).getTime();
+  const asiste = d.asistencia === "si";
 
-  /**
-   * La respuesta se guarda en la base (API PHP en Hostinger) y aparece en el
-   * panel de los novios. WhatsApp queda como aviso opcional en la pantalla
-   * de gracias, y como respaldo si el servidor no respondiera.
-   */
   const enviar = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -77,13 +73,9 @@ export default function Confirmar() {
 
     const nombre = d.nombre.trim();
     if (nombre.length < 2) return setError("Escribe tu nombre completo.");
-    if (!d.asistencia) return setError("Dinos si nos acompañas.");
-    if (d.acompanantes < 0 || d.acompanantes > 10)
-      return setError("El número de acompañantes no parece correcto.");
+    if (!d.asistencia) return setError("Cuéntanos si nos acompañas.");
 
-    const asiste = d.asistencia === "si";
     setEstado("enviando");
-
     try {
       const r = await fetch(API_CONFIRMAR, {
         method: "POST",
@@ -102,7 +94,6 @@ export default function Confirmar() {
 
       if (!r.ok || !json?.ok) {
         setEstado("formulario");
-        // 422 y 429 son mensajes para el invitado; lo demás es falla del servidor.
         if (r.status === 422 || r.status === 429) return setError(json?.error ?? "Revisa los datos.");
         setRespaldo(hayWhatsapp());
         return setError("No pudimos guardar tu respuesta en este momento.");
@@ -113,296 +104,216 @@ export default function Confirmar() {
       return setError("No hay conexión con el servidor en este momento.");
     }
 
-    medir(asiste ? "rsvp_completado" : "rsvp_declinado", {
-      acompanantes: asiste ? d.acompanantes : 0,
-    });
+    medir(asiste ? "rsvp_completado" : "rsvp_declinado", { acompanantes: asiste ? d.acompanantes : 0 });
     setEstado("listo");
   };
 
-  const asiste = d.asistencia === "si";
-  const nombrePila = d.nombre.trim().split(" ")[0] || "";
-
   return (
-    <section
-      id="confirmar"
-      className="relative overflow-hidden bg-noche px-6 py-24 text-hueso sm:py-36"
-    >
-      {/* Halo tenue detrás del formulario. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-1/2 h-[70vmin] w-[70vmin] -translate-x-1/2 -translate-y-1/2 rounded-full"
-        style={{
-          background:
-            "radial-gradient(circle, rgba(156,90,84,0.14) 0%, transparent 68%)",
-        }}
-      />
-
+    <section id="confirmar" className="papel relative px-6 pb-16 pt-14 text-center">
       <Confeti activo={estado === "listo" && asiste} />
 
-      <div className="relative mx-auto max-w-xl">
-        <AnimatePresence mode="wait">
-          {estado === "listo" ? (
-            <Gracias key="gracias" datos={d} nombrePila={nombrePila} porWhatsapp={porWhatsapp} />
-          ) : (
-            <motion.div key="form" exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.6 }}>
-              <div className="text-center">
-                <span className="eyebrow inline-flex items-center gap-3 text-[0.58rem] text-rosa-claro">
-                  <Rombo tam={7} />
-                  Confirmación
-                </span>
-                <h2 className="mt-6 font-display text-[clamp(2.4rem,8vw,4.6rem)] leading-[0.95]">
-                  <RevelarMascara duracion={1.3}>¿Nos acompañas?</RevelarMascara>
-                </h2>
-                <motion.p
-                  className="mt-6 text-[0.9rem] leading-[1.9] text-hueso/50"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 1, delay: 0.4 }}
-                >
-                  {cerrado
-                    ? "Las confirmaciones ya cerraron. Escríbenos directo y lo vemos."
-                    : `Nos ayuda muchísimo saberlo con tiempo. Hasta el ${evento.rsvp.cierreTexto}.`}
-                </motion.p>
+      <Aparecer>
+        <h2 className="titular text-[2.2rem] text-oliva-hondo">Confirma</h2>
+        <p className="manuscrita -mt-1 text-[2.3rem] text-oliva">tu asistencia</p>
+        <Divisor className="mt-3 text-oliva" />
+      </Aparecer>
+
+      <AnimatePresence mode="wait">
+        {estado === "listo" ? (
+          <Gracias key="gracias" datos={d} porWhatsapp={porWhatsapp} />
+        ) : (
+          <motion.form
+            key="form"
+            onSubmit={enviar}
+            noValidate
+            exit={{ opacity: 0, y: -10 }}
+            className="relative mx-auto mt-6 max-w-[21rem] text-left"
+          >
+            <p className="text-center text-[1.02rem] italic text-tinta-suave">
+              {cerrado
+                ? "Las confirmaciones ya cerraron. Escríbenos y lo vemos."
+                : `Te agradeceremos confirmar antes del ${evento.rsvp.cierreTexto}.`}
+            </p>
+
+            <Campo etiqueta="Nombre completo" htmlFor="nombre">
+              <input
+                id="nombre"
+                className="campo"
+                value={d.nombre}
+                onChange={(e) => set("nombre", e.target.value)}
+                placeholder="Cómo te presentamos"
+                autoComplete="name"
+                disabled={cerrado}
+              />
+            </Campo>
+
+            <Campo etiqueta="Teléfono" htmlFor="telefono" opcional>
+              <input
+                id="telefono"
+                type="tel"
+                inputMode="tel"
+                className="campo"
+                value={d.telefono}
+                onChange={(e) => set("telefono", e.target.value)}
+                placeholder="+56 9 …"
+                autoComplete="tel"
+                disabled={cerrado}
+              />
+            </Campo>
+
+            <fieldset className="mt-7" disabled={cerrado}>
+              <legend className="rotulo text-[0.68rem] text-tinta-suave">¿Nos acompañas?</legend>
+              <div className="mt-3 grid grid-cols-2 gap-2.5">
+                {(
+                  [
+                    ["si", "Sí, ahí estaré"],
+                    ["no", "No podré ir"],
+                  ] as const
+                ).map(([valor, texto]) => {
+                  const activo = d.asistencia === valor;
+                  return (
+                    <label
+                      key={valor}
+                      className={`cursor-pointer rounded-sm border px-3 py-3.5 text-center text-[1.02rem] transition-colors ${
+                        activo
+                          ? "border-oliva bg-oliva text-papel-claro"
+                          : "border-linea bg-papel-claro/60 text-tinta hover:border-oliva"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="asistencia"
+                        value={valor}
+                        checked={activo}
+                        onChange={() => set("asistencia", valor)}
+                        className="sr-only"
+                      />
+                      {texto}
+                    </label>
+                  );
+                })}
               </div>
+            </fieldset>
 
-              <form onSubmit={enviar} className="mt-14 space-y-9" noValidate>
-                <Campo etiqueta="Nombre completo" htmlFor="nombre">
-                  <input
-                    id="nombre"
-                    className="campo"
-                    value={d.nombre}
-                    onChange={(e) => set("nombre", e.target.value)}
-                    placeholder="Cómo te presentamos"
-                    autoComplete="name"
-                    disabled={cerrado}
-                    required
-                  />
-                </Campo>
-
-                <Campo etiqueta="Teléfono" htmlFor="telefono" opcional>
-                  <input
-                    id="telefono"
-                    type="tel"
-                    className="campo"
-                    value={d.telefono}
-                    onChange={(e) => set("telefono", e.target.value)}
-                    placeholder="+56 9 ..."
-                    autoComplete="tel"
-                    disabled={cerrado}
-                  />
-                </Campo>
-
-                <fieldset disabled={cerrado}>
-                  <legend className="eyebrow text-[0.5rem] text-hueso/40">
-                    ¿Confirmas tu asistencia?
-                  </legend>
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    {(
-                      [
-                        ["si", "Sí, estaré presente"],
-                        ["no", "No podré asistir"],
-                      ] as const
-                    ).map(([valor, texto]) => {
-                      const activo = d.asistencia === valor;
-                      return (
-                        <label
-                          key={valor}
-                          className={`relative cursor-pointer overflow-hidden border px-5 py-5 text-center transition-colors duration-500 ${
-                            activo
-                              ? "border-rosa text-hueso"
-                              : "border-hueso/18 text-hueso/55 hover:border-hueso/45"
-                          }`}
-                        >
-                          <motion.span
-                            className="absolute inset-0 bg-rosa"
-                            initial={false}
-                            animate={{ scaleY: activo ? 1 : 0 }}
-                            style={{ originY: 1 }}
-                            transition={{ duration: 0.5, ease: silk }}
-                          />
-                          <input
-                            type="radio"
-                            name="asistencia"
-                            value={valor}
-                            checked={activo}
-                            onChange={() => set("asistencia", valor)}
-                            className="sr-only"
-                          />
-                          <span className="eyebrow relative text-[0.55rem]">{texto}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </fieldset>
-
-                {/* Los campos de detalle solo existen si viene. */}
-                <AnimatePresence initial={false}>
-                  {asiste && (
-                    <motion.div
-                      className="space-y-9 overflow-hidden"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: "auto" }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.7, ease: silk }}
-                    >
-                      <Campo etiqueta="Acompañantes" htmlFor="acompanantes">
-                        <Contador
-                          valor={d.acompanantes}
-                          // Suma sobre el valor más reciente, no sobre el que
-                          // había al dibujar: dos toques rápidos antes de
-                          // redibujar contaban como uno.
-                          onPaso={(delta) =>
-                            setD((prev) => ({
-                              ...prev,
-                              acompanantes: Math.min(10, Math.max(0, prev.acompanantes + delta)),
-                            }))
-                          }
-                        />
-                      </Campo>
-
-                      <Campo etiqueta="Restricciones alimentarias" htmlFor="alimentacion" opcional>
-                        <input
-                          id="alimentacion"
-                          className="campo"
-                          value={d.alimentacion}
-                          onChange={(e) => set("alimentacion", e.target.value)}
-                          placeholder="Vegetariano, sin gluten, alergias…"
-                        />
-                      </Campo>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <Campo
-                  etiqueta={`Mensaje para ${evento.pareja.uno} & ${evento.pareja.dos}`}
-                  htmlFor="mensaje"
-                  opcional
+            <AnimatePresence initial={false}>
+              {asiste && (
+                <motion.div
+                  className="overflow-hidden"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.45 }}
                 >
-                  <textarea
-                    id="mensaje"
-                    rows={3}
-                    className="campo resize-none"
-                    value={d.mensaje}
-                    onChange={(e) => set("mensaje", e.target.value)}
-                    disabled={cerrado}
-                  />
-                </Campo>
+                  <Campo etiqueta="Acompañantes" htmlFor="acompanantes">
+                    <Contador
+                      valor={d.acompanantes}
+                      // Suma sobre el valor más reciente: dos toques rápidos
+                      // antes de redibujar contaban como uno.
+                      onPaso={(delta) =>
+                        setD((prev) => ({
+                          ...prev,
+                          acompanantes: Math.min(10, Math.max(0, prev.acompanantes + delta)),
+                        }))
+                      }
+                    />
+                  </Campo>
+                  <Campo etiqueta="Restricciones alimentarias" htmlFor="alimentacion" opcional>
+                    <input
+                      id="alimentacion"
+                      className="campo"
+                      value={d.alimentacion}
+                      onChange={(e) => set("alimentacion", e.target.value)}
+                      placeholder="Vegetariano, sin gluten, alergias…"
+                    />
+                  </Campo>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                <AnimatePresence>
-                  {error && (
-                    <motion.p
-                      role="alert"
-                      className="border-l-2 border-rosa-claro pl-4 text-[0.85rem] text-rosa-claro"
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.4 }}
-                    >
-                      {error}
-                      {respaldo && (
-                        <a
-                          href={urlWhatsapp(textoRespuesta(d))}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={() => {
-                            medir("clic_whatsapp", { origen: "rsvp_respaldo" });
-                            setPorWhatsapp(true);
-                            setEstado("listo");
-                          }}
-                          className="mt-2 block underline underline-offset-4"
-                        >
-                          Envíanos tu respuesta por WhatsApp
-                        </a>
-                      )}
-                    </motion.p>
-                  )}
-                </AnimatePresence>
+            <Campo etiqueta={`Un mensaje para ${evento.pareja.uno} y ${evento.pareja.dos}`} htmlFor="mensaje" opcional>
+              <textarea
+                id="mensaje"
+                rows={3}
+                className="campo resize-none"
+                value={d.mensaje}
+                onChange={(e) => set("mensaje", e.target.value)}
+                disabled={cerrado}
+              />
+            </Campo>
 
-                {/* Trampa para bots: invisible para personas y lectores de
-                    pantalla. Si llega con contenido, el servidor la descarta. */}
-                <input
-                  type="text"
-                  name="sitio"
-                  tabIndex={-1}
-                  autoComplete="off"
-                  aria-hidden="true"
-                  value={trampa}
-                  onChange={(e) => setTrampa(e.target.value)}
-                  className="absolute -left-[9999px] h-px w-px opacity-0"
-                />
+            {/* Trampa para bots: invisible para personas y lectores de pantalla. */}
+            <input
+              type="text"
+              name="sitio"
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              value={trampa}
+              onChange={(e) => setTrampa(e.target.value)}
+              className="absolute -left-[9999px] h-px w-px opacity-0"
+            />
 
-                <button
-                  type="submit"
-                  disabled={cerrado || estado === "enviando"}
-                  className="group relative w-full cursor-pointer overflow-hidden border border-hueso/25 py-5 transition-colors duration-500 hover:border-rosa disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <span className="absolute inset-0 origin-bottom scale-y-0 bg-rosa transition-transform duration-[650ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100 group-disabled:scale-y-0" />
-                  <span className="eyebrow relative text-[0.58rem]">
-                    {estado === "enviando" ? "Enviando…" : "Confirmar asistencia"}
-                  </span>
-                </button>
-              </form>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+            {error && (
+              <p role="alert" className="mt-6 border-l-2 border-dorado pl-3 text-[0.98rem] text-oliva-hondo">
+                {error}
+                {respaldo && (
+                  <a
+                    href={urlWhatsapp(textoRespuesta(d))}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => {
+                      medir("clic_whatsapp", { origen: "rsvp_respaldo" });
+                      setPorWhatsapp(true);
+                      setEstado("listo");
+                    }}
+                    className="mt-1 block font-semibold underline underline-offset-4"
+                  >
+                    Envíanos tu respuesta por WhatsApp
+                  </a>
+                )}
+              </p>
+            )}
+
+            <div className="mt-8 text-center">
+              <button type="submit" disabled={cerrado || estado === "enviando"} className={boton}>
+                {estado === "enviando" ? "Enviando…" : "Confirmar asistencia"}
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
     </section>
   );
 }
 
 /* ─────────────────────────────────────────────────────────────── gracias */
 
-function Gracias({
-  datos,
-  nombrePila,
-  porWhatsapp,
-}: {
-  datos: Datos;
-  nombrePila: string;
-  porWhatsapp: boolean;
-}) {
+function Gracias({ datos, porWhatsapp }: { datos: Datos; porWhatsapp: boolean }) {
   const asiste = datos.asistencia === "si";
+  const nombrePila = datos.nombre.trim().split(" ")[0] || "";
 
   return (
     <motion.div
-      className="py-8 text-center"
-      initial={{ opacity: 0, y: 30 }}
+      className="mx-auto mt-8 max-w-[20rem]"
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 1.1, ease: silk }}
+      transition={{ duration: 0.8 }}
     >
-      <motion.span
-        className="inline-block text-rosa-claro"
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ duration: 1.2, delay: 0.2, ease: silk }}
-      >
-        <Rombo tam={26} />
-      </motion.span>
-
-      <h2 className="mt-10 font-display text-[clamp(2rem,7vw,3.6rem)] leading-[1.05]">
-        {asiste ? (
-          <>
-            ¡Gracias{nombrePila && `, ${nombrePila}`}!
-          </>
-        ) : (
-          <>Gracias por avisarnos</>
-        )}
-      </h2>
-
-      <p className="mx-auto mt-7 max-w-sm text-[0.95rem] leading-[1.95] text-hueso/55">
+      <span className="inline-block text-oliva">
+        <Corazon tam={22} />
+      </span>
+      <p className="manuscrita mt-3 text-[2.6rem] text-oliva-hondo">
+        {asiste ? `¡Gracias${nombrePila ? `, ${nombrePila}` : ""}!` : "Gracias por avisarnos"}
+      </p>
+      <p className="mt-3 text-[1.05rem] text-tinta">
         {asiste
           ? "Nos alegra muchísimo saber que estarás con nosotros."
-          : "Te vamos a extrañar ese día. Gracias por tomarte el momento de decirnos."}
+          : "Te vamos a extrañar ese día. Gracias por contarnos."}
       </p>
 
-      <Separador className="mx-auto mt-12 text-hueso/25" ancho="3rem" />
-
-      {/* La respuesta ya quedó guardada. WhatsApp es un extra, por si
-          además quieren escribirles directo. */}
       {hayWhatsapp() && (
-        <div className="mt-12">
-          <p className="mx-auto max-w-xs text-[0.85rem] leading-relaxed text-hueso/45">
+        <div className="mt-8">
+          <p className="text-[0.98rem] italic text-tinta-suave">
             {porWhatsapp
               ? "Abrimos WhatsApp con tu respuesta escrita. Solo falta tocar enviar para que nos llegue."
               : "Tu respuesta ya nos llegó. Si además quieres escribirnos:"}
@@ -412,19 +323,12 @@ function Gracias({
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => medir("clic_whatsapp", { origen: "rsvp_gracias" })}
-            className="group relative mt-6 inline-block overflow-hidden border border-hueso/25 px-9 py-4 transition-colors duration-500 hover:border-rosa"
+            className={`${boton} mt-4 inline-block`}
           >
-            <span className="absolute inset-0 origin-bottom scale-y-0 bg-rosa transition-transform duration-[600ms] ease-[cubic-bezier(0.22,1,0.36,1)] group-hover:scale-y-100" />
-            <span className="eyebrow relative text-[0.55rem]">
-              {porWhatsapp ? "Abrir WhatsApp de nuevo" : "Avisar también por WhatsApp"}
-            </span>
+            {porWhatsapp ? "Abrir WhatsApp de nuevo" : "Avisar por WhatsApp"}
           </a>
         </div>
       )}
-
-      <p className="mt-14 font-display text-lg italic text-hueso/35">
-        {textoFecha()}
-      </p>
     </motion.div>
   );
 }
@@ -443,58 +347,31 @@ function Campo({
   children: React.ReactNode;
 }) {
   return (
-    <div>
-      <label htmlFor={htmlFor} className="eyebrow flex items-baseline gap-2 text-[0.5rem] text-hueso/40">
+    <div className="mt-6">
+      <label htmlFor={htmlFor} className="rotulo flex items-baseline gap-2 text-[0.66rem] text-tinta-suave">
         {etiqueta}
-        {opcional && <span className="text-[0.42rem] text-hueso/22">opcional</span>}
+        {opcional && <span className="font-serif text-[0.8rem] normal-case tracking-normal italic opacity-70">opcional</span>}
       </label>
-      <div className="mt-2 text-hueso">{children}</div>
+      {children}
     </div>
   );
 }
 
-/** Contador con botones grandes: en móvil es mucho mejor que un select. */
 function Contador({ valor, onPaso }: { valor: number; onPaso: (delta: number) => void }) {
-  const paso = onPaso;
-
+  const redondo =
+    "flex h-10 w-10 items-center justify-center rounded-full border border-linea text-[1.3rem] leading-none text-oliva transition-colors hover:border-oliva disabled:opacity-30";
   return (
-    <div className="flex items-center gap-6 border-b border-hueso/20 pb-3">
-      <button
-        type="button"
-        onClick={() => paso(-1)}
-        disabled={valor === 0}
-        aria-label="Quitar un acompañante"
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-hueso/20 text-hueso/70 transition-colors hover:border-rosa hover:text-rosa-claro disabled:opacity-25"
-      >
+    <div className="mt-2 flex items-center gap-5 border-b border-linea pb-3">
+      <button type="button" onClick={() => onPaso(-1)} disabled={valor === 0} aria-label="Quitar un acompañante" className={redondo}>
         −
       </button>
-
-      <span className="relative h-9 w-8 overflow-hidden">
-        <AnimatePresence initial={false} mode="popLayout">
-          <motion.span
-            key={valor}
-            className="absolute inset-0 flex items-center justify-center font-display text-3xl leading-none tabular-nums"
-            initial={{ y: 26, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -26, opacity: 0 }}
-            transition={{ duration: 0.35, ease: silk }}
-          >
-            {valor}
-          </motion.span>
-        </AnimatePresence>
+      <span className="w-6 text-center font-serif text-[1.8rem] font-semibold leading-none text-oliva-hondo tabular-nums">
+        {valor}
       </span>
-
-      <button
-        type="button"
-        onClick={() => paso(1)}
-        disabled={valor === 10}
-        aria-label="Agregar un acompañante"
-        className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-hueso/20 text-hueso/70 transition-colors hover:border-rosa hover:text-rosa-claro disabled:opacity-25"
-      >
+      <button type="button" onClick={() => onPaso(1)} disabled={valor === 10} aria-label="Agregar un acompañante" className={redondo}>
         +
       </button>
-
-      <span className="text-[0.8rem] text-hueso/35">
+      <span className="text-[1rem] italic text-tinta-suave">
         {valor === 0 ? "Voy solo/a" : valor === 1 ? "1 persona más" : `${valor} personas más`}
       </span>
     </div>
