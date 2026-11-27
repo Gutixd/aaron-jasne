@@ -203,6 +203,43 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
         header('Location: ./?v=regalos&ok=regalo');
         exit;
+    } elseif ($accion === 'editar') {
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        $nombre = limpiar_texto($_POST['nombre'] ?? null, 120);
+        $cupos = $leerCupos($_POST['cupos'] ?? null);
+        if (!$id || $nombre === null || $cupos === null) {
+            $error = 'Falta el saludo, o los cupos no están entre 1 y 11.';
+        } else {
+            db()->prepare('UPDATE invitados SET nombre = ?, busqueda = ?, telefono = ?, cupos = ? WHERE id = ?')
+                ->execute([$nombre, limpiar_texto($_POST['busqueda'] ?? null, 600) ?? '', limpiar_texto($_POST['telefono'] ?? null, 40), $cupos, $id]);
+            header('Location: ./?ok=editado#inv-' . $id);
+            exit;
+        }
+    } elseif ($accion === 'anotar') {
+        // Respuesta que llegó por teléfono o en persona: queda igual que una
+        // de la invitación (reemplaza la anterior), marcada como anotada.
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        $q = db()->prepare('SELECT * FROM invitados WHERE id = ?');
+        $q->execute([$id ?: 0]);
+        if ($inv = $q->fetch()) {
+            $asiste = ($_POST['asiste'] ?? '') === 'si';
+            $personas = max(1, min((int) $inv['cupos'], (int) ($_POST['personas'] ?? 1)));
+            $pdo = db();
+            $pdo->beginTransaction();
+            $pdo->prepare('DELETE FROM confirmaciones WHERE invitado_id = ?')->execute([$id]);
+            $pdo->prepare('INSERT INTO confirmaciones (invitado_id, nombre, asiste, acompanantes, mensaje, creado) VALUES (?, ?, ?, ?, ?, ?)')
+                ->execute([$id, $inv['nombre'], $asiste ? 1 : 0, $asiste ? $personas - 1 : 0, '[anotado en el panel]', ahora()]);
+            $pdo->commit();
+            header('Location: ./?ok=anotado#inv-' . $id);
+            exit;
+        }
+    } elseif ($accion === 'enviado') {
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        if ($id) {
+            db()->prepare('UPDATE invitados SET enviado = 1 - enviado WHERE id = ?')->execute([$id]);
+        }
+        header('Location: ./?' . http_build_query(['f' => $_GET['f'] ?? 'todos']) . '#inv-' . $id);
+        exit;
     } elseif ($accion === 'quitar') {
         $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
         if ($id) {
@@ -217,7 +254,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
 $avisos = ['borrada' => 'Respuesta eliminada.', 'agregado' => 'Invitado agregado.',
            'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.', 'foto' => 'Foto eliminada.', 'regalo' => 'Aviso de regalo eliminado.',
-           'contenido' => 'Contenido guardado. La invitación ya lo muestra.'];
+           'contenido' => 'Contenido guardado. La invitación ya lo muestra.',
+           'editado' => 'Invitado actualizado.', 'anotado' => 'Respuesta anotada.'];
 $aviso ??= $avisos[$_GET['ok'] ?? ''] ?? null;
 
 // ── Datos ───────────────────────────────────────────────────────────────
@@ -266,7 +304,11 @@ if (sesion_activa()) {
     };
 
     $listaInvitados = array_values(array_filter($invitados, static function ($i) use ($filtro, $coincide, $estadoDe) {
-        if ($filtro !== 'todos' && $estadoDe($i) !== $filtro) return false;
+        if ($filtro === 'sin_enviar') {
+            if ((int) $i['enviado']) return false;
+        } elseif ($filtro !== 'todos' && $estadoDe($i) !== $filtro) {
+            return false;
+        }
         return $coincide($i['nombre'] . ' ' . $i['busqueda']);
     }));
     $listaRespuestas = array_values(array_filter($respuestas, static function ($r) use ($filtro, $coincide) {
@@ -298,13 +340,14 @@ $soloDigitos = static fn(string $tel): string => preg_replace('/\D/', '', $tel) 
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
 $sitio = ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/';
 $linkDe = static fn(array $i): string => $sitio . '?i=' . rawurlencode((string) $i['codigo']);
-$invitarPorWa = static function (array $i) use ($linkDe, $soloDigitos): string {
-    $txt = "¡Hola {$i['nombre']}! Con mucha alegría te invitamos a nuestro matrimonio 💍\n\n"
-         . "Esta es tu invitación personal, con todos los detalles y para confirmar asistencia:\n{$linkDe($i)}\n\n"
-         . ((int) $i['cupos'] > 1 ? "Reservamos {$i['cupos']} lugares para ustedes.\n\n" : '')
-         . "Con cariño, Aaron & Jasne";
-    return 'https://wa.me/' . $soloDigitos((string) $i['telefono']) . '?text=' . rawurlencode($txt);
-};
+// El mismo texto sirve para WhatsApp y para "Copiar mensaje" (Instagram, grupos…).
+$mensajeDe = static fn(array $i): string =>
+    "¡Hola {$i['nombre']}! Con mucha alegría te invitamos a nuestro matrimonio 💍\n\n"
+    . "Esta es tu invitación personal, con todos los detalles y para confirmar asistencia:\n{$linkDe($i)}\n\n"
+    . ((int) $i['cupos'] > 1 ? "Reservamos {$i['cupos']} lugares para ustedes.\n\n" : '')
+    . "Con cariño, Aaron & Jasne";
+$invitarPorWa = static fn(array $i): string =>
+    'https://wa.me/' . $soloDigitos((string) $i['telefono']) . '?text=' . rawurlencode($mensajeDe($i));
 
 $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
     ['v' => $GLOBALS['vista'], 'f' => $GLOBALS['filtro'], 'q' => $GLOBALS['busca']], $cambios));
@@ -370,7 +413,11 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   .fila { display:grid; grid-template-columns:2fr 1fr; gap:8px; margin-bottom:8px; }
   label.e { display:block; font-size:.66rem; letter-spacing:.16em; text-transform:uppercase; font-weight:600; color:var(--suave); margin:8px 0 3px; }
   form.inline { display:inline; } td button, td .boton { padding:5px 9px; font-size:.6rem; }
-  .cupos { display:flex; gap:4px; align-items:center; } .cupos input { width:56px; padding:4px 6px; }
+  details.editar summary { cursor:pointer; font-size:.68rem; letter-spacing:.18em; text-transform:uppercase; font-weight:600; border:1px solid var(--linea); padding:5px 9px; border-radius:3px; display:inline-block; }
+  details.editar[open] { background:var(--claro); border:1px solid var(--linea); border-radius:4px; padding:10px; min-width:240px; }
+  details.editar[open] summary { margin-bottom:6px; }
+  select { font:inherit; border:1px solid var(--linea); background:var(--claro); padding:8px 10px; border-radius:3px; width:100%; color:var(--tinta); }
+  tr:target { outline:2px solid var(--dorado); }
   .lista-simple li { margin:6px 0; }
   form.contenido { display:grid; gap:14px; max-width:760px; }
   .fila3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
@@ -486,7 +533,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
     <?php else: ?>
       <div class="barra">
         <nav class="filtros eyebrow">
-          <?php foreach (['todos' => 'Todos', 'si' => 'Asisten', 'no' => 'No asisten', 'pendiente' => 'Sin responder'] as $k => $txt): ?>
+          <?php foreach (['todos' => 'Todos', 'si' => 'Asisten', 'no' => 'No asisten', 'pendiente' => 'Sin responder', 'sin_enviar' => 'Sin enviar'] as $k => $txt): ?>
             <a class="<?= $filtro === $k ? 'activo' : '' ?>" href="<?= e($url(['f' => $k])) ?>"><?= $txt ?></a>
           <?php endforeach; ?>
         </nav>
@@ -498,36 +545,56 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
         <div class="vacio">Nadie coincide con ese filtro.</div>
       <?php else: ?>
       <table>
-        <thead><tr class="eyebrow"><th>Invitado</th><th>Estado</th><th>Vienen</th><th>Cupos</th><th>Invitación</th><th></th></tr></thead>
+        <thead><tr class="eyebrow"><th>Invitado</th><th>Estado</th><th>Vienen</th><th>Invitación</th><th></th></tr></thead>
         <tbody>
-        <?php foreach ($listaInvitados as $i): $est = $estadoDe($i); $r = $porInvitado[(int) $i['id']] ?? null; ?>
-          <tr>
-            <td><b><?= e($i['nombre']) ?></b><?php if ($i['busqueda'] !== ''): ?><div class="sub"><?= e($i['busqueda']) ?></div><?php endif; ?></td>
+        <?php foreach ($listaInvitados as $i): $est = $estadoDe($i); $r = $porInvitado[(int) $i['id']] ?? null; $id = (int) $i['id']; $tk = e(token_csrf()); ?>
+          <tr id="inv-<?= $id ?>">
+            <td><b><?= e($i['nombre']) ?></b>
+              <?php if ($i['busqueda'] !== ''): ?><div class="sub"><?= e($i['busqueda']) ?></div><?php endif; ?>
+              <?php if ($i['telefono']): ?><div class="sub"><?= e($i['telefono']) ?></div><?php endif; ?></td>
             <td data-t="Estado"><span class="estado e-<?= $est ?>"><?= ['si' => 'Asiste', 'no' => 'No asiste', 'pendiente' => 'Sin responder'][$est] ?></span>
-              <?php if ($r): ?><div class="sub"><?= e($fecha($r['creado'])) ?></div><?php endif; ?></td>
-            <td data-t="Vienen"><?= $est === 'si' ? (1 + (int) $r['acompanantes']) . ' de ' . (int) $i['cupos'] : '—' ?></td>
-            <td data-t="Cupos">
-              <form method="post" class="cupos">
-                <input type="hidden" name="accion" value="cupos"><input type="hidden" name="id" value="<?= (int) $i['id'] ?>">
-                <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
-                <input type="number" name="cupos" min="1" max="11" value="<?= (int) $i['cupos'] ?>" aria-label="Cupos">
-                <button type="submit">Guardar</button>
-              </form>
-            </td>
+              <?php if ($r): ?><div class="sub"><?= e($fecha($r['creado'])) ?><?= str_contains((string) $r['mensaje'], '[anotado en el panel]') ? ' · anotado a mano' : '' ?></div><?php endif; ?></td>
+            <td data-t="Vienen"><?= $est === 'si' ? (1 + (int) $r['acompanantes']) . ' de ' . (int) $i['cupos'] : '— de ' . (int) $i['cupos'] ?></td>
             <td data-t="Invitación">
-              <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
                 <?php if ($i['telefono']): ?>
                   <a class="boton wa" href="<?= e($invitarPorWa($i)) ?>" target="_blank" rel="noopener">WhatsApp</a>
                 <?php endif; ?>
-                <button type="button" data-copiar="<?= e($linkDe($i)) ?>">Copiar link</button>
+                <button type="button" data-copiar="<?= e($mensajeDe($i)) ?>" data-texto="Copiar mensaje">Copiar mensaje</button>
+                <button type="button" data-copiar="<?= e($linkDe($i)) ?>" data-texto="Copiar link">Copiar link</button>
+                <form method="post" class="inline">
+                  <input type="hidden" name="accion" value="enviado"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="csrf" value="<?= $tk ?>">
+                  <button type="submit" class="<?= (int) $i['enviado'] ? 'principal' : '' ?>" title="Marcar si ya le mandaste la invitación"><?= (int) $i['enviado'] ? '✓ Enviada' : 'Marcar enviada' ?></button>
+                </form>
               </div>
             </td>
             <td>
-              <form method="post" class="inline" onsubmit="return confirm(<?= e(json_encode('¿Quitar a ' . $i['nombre'] . ' de la lista?', JSON_UNESCAPED_UNICODE)) ?>)">
-                <input type="hidden" name="accion" value="quitar"><input type="hidden" name="id" value="<?= (int) $i['id'] ?>">
-                <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
-                <button type="submit">Quitar</button>
-              </form>
+              <details class="editar">
+                <summary>Editar</summary>
+                <form method="post">
+                  <input type="hidden" name="accion" value="editar"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="csrf" value="<?= $tk ?>">
+                  <label class="e">Saludo</label><input name="nombre" required maxlength="120" value="<?= e($i['nombre']) ?>">
+                  <label class="e">Nombres para buscarlo <span class="sub">(coma entre cada uno)</span></label><input name="busqueda" maxlength="600" value="<?= e($i['busqueda']) ?>" placeholder="Nombre real y apellido">
+                  <div class="fila">
+                    <div><label class="e">Teléfono</label><input name="telefono" maxlength="40" value="<?= e((string) $i['telefono']) ?>" placeholder="+56 9…"></div>
+                    <div><label class="e">Cupos</label><input name="cupos" type="number" min="1" max="11" value="<?= (int) $i['cupos'] ?>"></div>
+                  </div>
+                  <p style="margin:10px 0 0"><button class="principal" type="submit">Guardar</button></p>
+                </form>
+                <form method="post" style="margin-top:14px;border-top:1px solid var(--linea);padding-top:10px">
+                  <input type="hidden" name="accion" value="anotar"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="csrf" value="<?= $tk ?>">
+                  <label class="e">Anotar su respuesta <span class="sub">(si te avisó por teléfono o en persona)</span></label>
+                  <div class="fila">
+                    <div><select name="asiste"><option value="si">Asiste</option><option value="no">No asiste</option></select></div>
+                    <div><input name="personas" type="number" min="1" max="<?= (int) $i['cupos'] ?>" value="<?= $r && (int) $r['asiste'] === 1 ? 1 + (int) $r['acompanantes'] : (int) $i['cupos'] ?>" aria-label="Personas que asisten"></div>
+                  </div>
+                  <p style="margin:10px 0 0"><button type="submit">Anotar</button></p>
+                </form>
+                <form method="post" style="margin-top:14px" onsubmit="return confirm(<?= e(json_encode('¿Quitar a ' . $i['nombre'] . ' de la lista?', JSON_UNESCAPED_UNICODE)) ?>)">
+                  <input type="hidden" name="accion" value="quitar"><input type="hidden" name="id" value="<?= $id ?>"><input type="hidden" name="csrf" value="<?= $tk ?>">
+                  <button type="submit">Quitar de la lista</button>
+                </form>
+              </details>
             </td>
           </tr>
         <?php endforeach; ?>
@@ -817,7 +884,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
     if (!b) return;
     try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = '¡Copiado!'; }
     catch { prompt('Copia este link:', b.dataset.copiar); }
-    setTimeout(() => (b.textContent = 'Copiar link'), 1800);
+    setTimeout(() => (b.textContent = b.dataset.texto || 'Copiar link'), 1800);
   });
 </script>
 </body>
