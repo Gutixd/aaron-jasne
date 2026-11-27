@@ -1,0 +1,41 @@
+# Cada push a main arma la invitación y deja el resultado (dist/) en la rama
+# `hostinger`. Hostinger (hPanel › Avanzado › GIT) despliega esa rama en
+# public_html y se actualiza solo con su webhook.
+name: Publicar en Hostinger
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hostinger
+  cancel-in-progress: true
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # 24: scripts/contenido-base.mjs importa el .ts directamente.
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Subir dist/ a la rama hostinger
+        run: |
+          cd dist
+          git init -q -b hostinger
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publicación de ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" hostinger

@@ -20,7 +20,12 @@ function config(): array
     // En Hostinger: api/config.php. En local, AJ_CONFIG apunta a
     // servidor/config.local.php, fuera de public/, para que la configuración
     // de prueba nunca termine copiada dentro del sitio compilado.
-    $ruta = getenv('AJ_CONFIG') ?: __DIR__ . '/config.php';
+    // Orden: variable de entorno (local) → api/config.php → config-boda.php
+    // fuera de public_html (Hostinger con GIT: esa carpeta la maneja el
+    // repositorio y no puede tener archivos propios).
+    $ruta = getenv('AJ_CONFIG') ?: (is_file(__DIR__ . '/config.php')
+        ? __DIR__ . '/config.php'
+        : dirname(__DIR__, 2) . '/config-boda.php');
     if (!is_file($ruta)) {
         http_response_code(503);
         header('Content-Type: application/json; charset=utf-8');
