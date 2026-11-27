@@ -52,7 +52,12 @@ invitación (persona o familia) con su saludo, los nombres con que se la
 puede buscar y sus cupos. Se agregan uno por uno o pegando una lista
 (`saludo | nombres para buscar | cupos | teléfono`, una línea cada uno).
 
-En la invitación hay **un solo link para todos**. El invitado escribe su
+Cada invitación tiene además su **link personal** (`…/?i=k7f3q9mx`, código
+al azar). Con él, la tarjeta de entrada va dirigida a ese invitado y la
+confirmación llega con su nombre y cupos puestos. El panel copia el link o
+lo manda por WhatsApp.
+
+También sirve **el link general**: el invitado escribe su
 nombre y apellido; si está en la lista se le saluda ("¡Hola, Familia
 Pérez!") y puede confirmar hasta sus cupos. Si no está, se le ofrece
 escribir por WhatsApp. Si vuelve a responder, su respuesta se reemplaza.
@@ -64,6 +69,23 @@ las restricciones de comida, y lo descarga todo a Excel.
 
 Cada respuesta se guarda en MySQL (`public/api/confirmar.php`). Si el servidor fallara, el invitado recibe un enlace a WhatsApp con su
 respuesta ya escrita, para que nunca quede atascado.
+
+## Fotos de los invitados
+
+El día de la boda aparece la sección **"Comparte tus fotos"** (`#fotos`):
+cada invitado sube fotos desde su celular, sin cuenta. Antes de ese día la
+sección avisa que se abrirá; después, agradece. Las fechas y los topes se
+fijan en `config.php` › `fotos`:
+
+- ventana `desde` / `hasta`,
+- máximo por foto (`max_mb`), fotos por persona por hora (`por_hora`),
+- tope total de fotos (`max_fotos`) y de espacio (`max_total_mb`).
+
+El celular achica cada foto antes de subirla (~0,5 MB) y sube de a una. El
+servidor revisa que sea una imagen de verdad y la guarda **fuera de
+public_html**, en `fotos-invitados/`: solo se ven desde el panel ›
+**Fotos**, donde se pueden borrar, descargar en ZIP (por partes) e imprimir
+un QR para las mesas.
 
 ### Publicar en Hostinger
 
@@ -85,10 +107,10 @@ src/
   lib/          calendar · whatsapp · analytics
   components/   Sobre · Musica · Foto · Ornamentos · Iconos · Aparecer · Confeti
     secciones/  Portada · Fecha · ConAmor · Programa · DressCode
-                Menu · Cita · Lugar · Galeria · Confirmar · Cierre
+                Menu · Cita · Lugar · Galeria · FotosInvitados · Confirmar · Cierre
 public/
-  api/          buscar.php · confirmar.php · _base.php  (PHP)
-  panel/        index.php · exportar.php         (PHP)
+  api/          buscar.php · confirmar.php · fotos.php · _base.php  (PHP)
+  panel/        index.php · exportar.php · foto.php · fotos-zip.php  (PHP)
   fotos/  music/
 servidor/       plantilla de config y herramientas locales (las tablas se crean solas)
 ```

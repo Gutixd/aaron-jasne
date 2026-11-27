@@ -90,9 +90,116 @@ function preparar_tablas(PDO $pdo): void
         creado DATETIME NOT NULL
       ){$fin}");
 
+    // Fotos que suben los invitados el día de la boda. El archivo va a una
+    // carpeta fuera de la web (ver carpeta_fotos); aquí solo sus datos.
+    $pdo->exec("CREATE TABLE IF NOT EXISTS fotos (
+        id {$id},
+        archivo VARCHAR(80) NOT NULL,
+        tipo VARCHAR(40) NOT NULL,
+        bytes INT UNSIGNED NOT NULL,
+        autor VARCHAR(80) NULL,
+        creado DATETIME NOT NULL
+      ){$fin}");
+
     // Columnas que llegaron después: se agregan si faltan.
     asegurar_columna($pdo, $sqlite, 'confirmaciones', 'invitado_id', 'INT NULL');
     asegurar_columna($pdo, $sqlite, 'confirmaciones', 'canciones', 'VARCHAR(500) NULL');
+    asegurar_columna($pdo, $sqlite, 'invitados', 'codigo', 'VARCHAR(16) NULL');
+
+    // Todo invitado tiene su código de link personal.
+    foreach ($pdo->query("SELECT id FROM invitados WHERE codigo IS NULL OR codigo = ''")->fetchAll() as $f) {
+        $pdo->prepare('UPDATE invitados SET codigo = ? WHERE id = ?')->execute([nuevo_codigo(), $f['id']]);
+    }
+}
+
+/**
+ * Código al azar para el link personal (…/?i=k7f3q9mx). Sin letras que se
+ * confunden (l, 1, o, 0) por si alguien lo copia a mano. 8 caracteres de 32
+ * posibles: imposible de adivinar recorriendo códigos.
+ */
+function nuevo_codigo(): string
+{
+    $abc = 'abcdefghijkmnpqrstuvwxyz23456789';
+    $c = '';
+    for ($i = 0; $i < 8; $i++) {
+        $c .= $abc[random_int(0, strlen($abc) - 1)];
+    }
+    return $c;
+}
+
+function invitado_por_codigo(string $codigo): ?array
+{
+    if (!preg_match('/^[a-z0-9]{6,16}$/', $codigo)) {
+        return null;
+    }
+    $q = db()->prepare('SELECT * FROM invitados WHERE codigo = ?');
+    $q->execute([$codigo]);
+    return $q->fetch() ?: null;
+}
+
+/** Lo que el navegador necesita saber de un invitado. Nunca su teléfono. */
+function invitado_publico(array $inv): array
+{
+    $previa = respuesta_de((int) $inv['id']);
+    return [
+        'nombre' => $inv['nombre'],
+        'cupos'  => (int) $inv['cupos'],
+        'codigo' => $inv['codigo'],
+        'previa' => $previa === null ? null : [
+            'asiste'   => (int) $previa['asiste'] === 1,
+            'personas' => (int) $previa['asiste'] === 1 ? 1 + (int) $previa['acompanantes'] : 0,
+        ],
+    ];
+}
+
+/* ─────────────────────────────────────────────── fotos de los invitados ── */
+
+/**
+ * Reglas de la subida de fotos, desde config.php (clave 'fotos'):
+ *   desde / hasta  — ventana en que se puede subir ('2027-01-16 12:00:00').
+ *   max_mb         — tamaño máximo por foto.
+ *   max_total_mb   — tope de todo lo subido, para no llenar el hosting.
+ *   max_fotos      — tope de cantidad de fotos.
+ *   por_hora       — fotos por persona (IP) por hora.
+ * Sin 'desde' y 'hasta' la subida queda cerrada.
+ */
+function reglas_fotos(): array
+{
+    $f = config()['fotos'] ?? [];
+    return [
+        'desde'        => $f['desde'] ?? null,
+        'hasta'        => $f['hasta'] ?? null,
+        'max_mb'       => (int) ($f['max_mb'] ?? 15),
+        'max_total_mb' => (int) ($f['max_total_mb'] ?? 8000),
+        'max_fotos'    => (int) ($f['max_fotos'] ?? 3000),
+        'por_hora'     => (int) ($f['por_hora'] ?? 60),
+    ];
+}
+
+/** "antes", "abierto" o "cerrado", según la ventana de config.php. */
+function estado_fotos(): string
+{
+    $r = reglas_fotos();
+    if (!$r['desde'] || !$r['hasta']) {
+        return 'antes';
+    }
+    $ahora = ahora();
+    if ($ahora < $r['desde']) return 'antes';
+    if ($ahora > $r['hasta']) return 'cerrado';
+    return 'abierto';
+}
+
+/**
+ * Carpeta de las fotos: FUERA de public_html, para que nadie pueda verlas
+ * ni descargarlas escribiendo una dirección. Solo el panel las entrega.
+ */
+function carpeta_fotos(): string
+{
+    $dir = config()['fotos']['carpeta'] ?? dirname(__DIR__, 2) . '/fotos-invitados';
+    if (!is_dir($dir)) {
+        mkdir($dir, 0750, true);
+    }
+    return rtrim($dir, '/\\');
 }
 
 function asegurar_columna(PDO $pdo, bool $sqlite, string $tabla, string $columna, string $tipo): void

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Corazon, Divisor, Flores } from "./Ornamentos";
 import { evento, textoFecha } from "@/config/event.config";
+import { useInvitadoDelLink } from "@/lib/invitado";
 
 const suave = [0.22, 1, 0.36, 1] as const;
 
@@ -18,6 +19,8 @@ export default function Sobre({ onAbrir }: { onAbrir: () => void }) {
   const [abierto, setAbierto] = useState(false);
   const [visible, setVisible] = useState(true);
   const { pareja, fotos } = evento;
+  // Con link personal, la tarjeta va dirigida a ese invitado.
+  const invitado = useInvitadoDelLink();
 
   useEffect(() => {
     if (!visible) return;
@@ -61,7 +64,19 @@ export default function Sobre({ onAbrir }: { onAbrir: () => void }) {
             <Flores src={fotos.floresEsquina} className="absolute -left-8 -top-6 w-28" />
             <Flores src={fotos.floresEsquina} className="absolute -bottom-6 -right-8 w-28 rotate-180" />
 
-            <p className="rotulo text-[0.66rem] text-tinta-suave">Estás invitado a la boda de</p>
+            {invitado && (
+              <motion.p
+                className="manuscrita -mt-3 mb-4 text-[1.9rem] leading-tight text-oliva"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.8 }}
+              >
+                {invitado.nombre}
+              </motion.p>
+            )}
+            <p className="rotulo text-[0.66rem] text-tinta-suave">
+              {invitado && invitado.cupos > 1 ? "Están invitados a la boda de" : "Estás invitado a la boda de"}
+            </p>
             <p className="titular mt-5 text-[2.6rem] text-oliva-hondo">{pareja.uno}</p>
             {/* pb: la cola de la "y" manuscrita baja mucho y tocaba la J. */}
             <p className="manuscrita pb-3 text-[2rem] leading-none text-oliva">y</p>

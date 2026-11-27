@@ -65,12 +65,14 @@ try {
     // confía en lo que diga el navegador sobre quién es ni cuántos cupos tiene.
     $invitadoId = null;
     if (hay_lista()) {
-        $r = buscar_invitado($nombre);
-        if (empty($r['invitado'])) {
+        // Con link personal manda el código; si no, se busca por el nombre.
+        $codigo = is_string($d['codigo'] ?? null) ? strtolower(trim($d['codigo'])) : '';
+        $inv = $codigo !== '' ? invitado_por_codigo($codigo) : (buscar_invitado($nombre)['invitado'] ?? null);
+        if ($inv === null) {
             responder_json(['ok' => false, 'error' => 'No encontramos tu nombre en la lista de invitados.'], 422);
         }
-        $invitadoId = (int) $r['invitado']['id'];
-        if ($asiste && 1 + $acompanantes > (int) $r['invitado']['cupos']) {
+        $invitadoId = (int) $inv['id'];
+        if ($asiste && 1 + $acompanantes > (int) $inv['cupos']) {
             responder_json(['ok' => false, 'error' => 'Son más personas que los cupos de tu invitación.'], 422);
         }
     }

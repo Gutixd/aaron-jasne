@@ -32,3 +32,5 @@ servidor/config.local.php
 servidor/*.sqlite
 CLAVE-PANEL.txt
 despliegue/
+# Fotos que suben los invitados (en Hostinger quedan fuera de public_html).
+fotos-invitados/

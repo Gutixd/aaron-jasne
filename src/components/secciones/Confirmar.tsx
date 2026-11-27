@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Corazon, Divisor } from "../Ornamentos";
 import Aparecer from "../Aparecer";
@@ -6,6 +6,7 @@ import Confeti from "../Confeti";
 import { evento } from "@/config/event.config";
 import { hayWhatsapp, mensajeConfirmacion, urlWhatsapp } from "@/lib/whatsapp";
 import { medir } from "@/lib/analytics";
+import { type Invitado, useInvitadoDelLink } from "@/lib/invitado";
 
 type Asistencia = "si" | "no";
 type Estado = "formulario" | "enviando" | "listo";
@@ -14,7 +15,6 @@ type Estado = "formulario" | "enviando" | "listo";
 const API_CONFIRMAR = "/api/confirmar.php";
 const API_BUSCAR = "/api/buscar.php";
 
-type Invitado = { nombre: string; cupos: number; previa: { asiste: boolean; personas: number } | null };
 
 /**
  * Paso del formulario:
@@ -76,6 +76,14 @@ export default function Confirmar() {
   const [trampa, setTrampa] = useState("");
   const [iniciado, setIniciado] = useState(false);
   const [paso, setPaso] = useState<Paso>({ tipo: "nombre" });
+
+  // Link personal: el invitado llega ya identificado, sin escribir nada.
+  const delLink = useInvitadoDelLink();
+  useEffect(() => {
+    if (!delLink) return;
+    setPaso((p) => (p.tipo === "nombre" ? { tipo: "invitado", invitado: delLink } : p));
+    setD((prev) => (prev.nombre ? prev : { ...prev, nombre: delLink.nombre }));
+  }, [delLink]);
   const [buscando, setBuscando] = useState(false);
 
   const set = <K extends keyof Datos>(k: K, v: Datos[K]) => {
@@ -157,6 +165,9 @@ export default function Confirmar() {
           alimentacion: asiste ? d.alimentacion.trim() : "",
           canciones: d.canciones.trim(),
           mensaje: d.mensaje.trim(),
+          // Con el código, el servidor sabe quién es aunque el nombre escrito
+          // sea "Familia Pérez" y no un nombre y apellido.
+          codigo: paso.tipo === "invitado" ? paso.invitado.codigo : undefined,
           sitio: trampa,
         }),
       });
@@ -190,7 +201,12 @@ export default function Confirmar() {
 
       <AnimatePresence mode="wait">
         {estado === "listo" ? (
-          <Gracias key="gracias" datos={d} porWhatsapp={porWhatsapp} />
+          <Gracias
+            key="gracias"
+            datos={d}
+            porWhatsapp={porWhatsapp}
+            saludo={paso.tipo === "invitado" ? paso.invitado.nombre : undefined}
+          />
         ) : (
           <motion.form
             key="form"
@@ -447,11 +463,20 @@ export default function Confirmar() {
 
 /* ─────────────────────────────────────────────────────────────── gracias */
 
-function Gracias({ datos, porWhatsapp }: { datos: Datos; porWhatsapp: boolean }) {
+function Gracias({
+  datos,
+  porWhatsapp,
+  saludo,
+}: {
+  datos: Datos;
+  porWhatsapp: boolean;
+  /** Saludo de la lista ("Familia Pérez"): mejor que el primer nombre. */
+  saludo?: string;
+}) {
   const asiste = datos.asistencia === "si";
   const pila = datos.nombre.trim().split(/\s+/)[0] || "";
   // "camila" → "Camila": muchos escriben su nombre en minúsculas en el celular.
-  const nombrePila = pila.charAt(0).toLocaleUpperCase("es-CL") + pila.slice(1);
+  const nombrePila = saludo ?? pila.charAt(0).toLocaleUpperCase("es-CL") + pila.slice(1);
 
   return (
     <motion.div

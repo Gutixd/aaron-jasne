@@ -6,7 +6,7 @@ cd /d "%~dp0"
 
 set "PHP=php"
 where php >nul 2>nul || set "PHP=%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.NTS.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\php.exe"
-set "PHPEXT=-d extension_dir="%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.NTS.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo_sqlite -d extension=mbstring"
+set "PHPEXT=-d extension_dir="%LOCALAPPDATA%\Microsoft\WinGet\Packages\PHP.PHP.NTS.8.3_Microsoft.Winget.Source_8wekyb3d8bbwe\ext" -d extension=pdo_sqlite -d extension=mbstring -d extension=fileinfo -d extension=zip"
 
 if not exist servidor\config.local.php "%PHP%" %PHPEXT% servidor\preparar-local.php
 

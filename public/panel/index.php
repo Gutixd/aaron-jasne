@@ -12,7 +12,9 @@ require __DIR__ . '/_sesion.php';
 
 $error = null;
 $aviso = null;
-$vista = ($_GET['v'] ?? 'invitados') === 'respuestas' ? 'respuestas' : 'invitados';
+$vista = in_array($_GET['v'] ?? '', ['respuestas', 'fotos'], true) ? $_GET['v'] : 'invitados';
+const FOTOS_POR_PAGINA = 60;
+const FOTOS_POR_ZIP = 150;
 
 /** Cupos válidos: 1 a 11 (el formulario admite hasta 10 acompañantes). */
 $leerCupos = static function (mixed $v): ?int {
@@ -21,8 +23,8 @@ $leerCupos = static function (mixed $v): ?int {
 };
 
 $agregar = static function (string $nombre, string $busqueda, int $cupos, ?string $tel): void {
-    db()->prepare('INSERT INTO invitados (nombre, busqueda, cupos, telefono, creado) VALUES (?, ?, ?, ?, ?)')
-        ->execute([$nombre, $busqueda, $cupos, $tel, ahora()]);
+    db()->prepare('INSERT INTO invitados (nombre, busqueda, cupos, telefono, codigo, creado) VALUES (?, ?, ?, ?, ?, ?)')
+        ->execute([$nombre, $busqueda, $cupos, $tel, nuevo_codigo(), ahora()]);
 };
 
 // ── Acciones (todas por POST y con token anti-CSRF) ─────────────────────
@@ -90,6 +92,16 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             header('Location: ./?ok=cupos');
             exit;
         }
+    } elseif ($accion === 'borrar_foto') {
+        $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
+        $q = db()->prepare('SELECT archivo FROM fotos WHERE id = ?');
+        $q->execute([$id ?: 0]);
+        if ($archivo = $q->fetchColumn()) {
+            @unlink(carpeta_fotos() . '/' . basename((string) $archivo));
+            db()->prepare('DELETE FROM fotos WHERE id = ?')->execute([$id]);
+        }
+        header('Location: ./?v=fotos&ok=foto');
+        exit;
     } elseif ($accion === 'quitar') {
         $id = filter_var($_POST['id'] ?? null, FILTER_VALIDATE_INT);
         if ($id) {
@@ -103,7 +115,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 }
 
 $avisos = ['borrada' => 'Respuesta eliminada.', 'agregado' => 'Invitado agregado.',
-           'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.'];
+           'cupos' => 'Cupos actualizados.', 'quitado' => 'Invitado quitado de la lista.', 'foto' => 'Foto eliminada.'];
 $aviso ??= $avisos[$_GET['ok'] ?? ''] ?? null;
 
 // ── Datos ───────────────────────────────────────────────────────────────
@@ -162,6 +174,16 @@ if (sesion_activa()) {
     }));
     // Respuestas de gente que no está en la lista (antes de cargarla, o quitada).
     $sueltas = count(array_filter($respuestas, static fn($r) => $r['invitado_id'] === null));
+
+    $fotosTot = db()->query('SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM fotos')->fetch();
+    $fotosN = (int) $fotosTot['n'];
+    $pagina = max(1, (int) ($_GET['p'] ?? 1));
+    $fotos = [];
+    if ($vista === 'fotos') {
+        $q = db()->prepare('SELECT * FROM fotos ORDER BY creado DESC LIMIT ' . FOTOS_POR_PAGINA . ' OFFSET ?');
+        $q->execute([($pagina - 1) * FOTOS_POR_PAGINA]);
+        $fotos = $q->fetchAll();
+    }
 }
 
 $fecha = static fn(string $s): string => (new DateTimeImmutable($s))->format('d-m-Y H:i');
@@ -170,11 +192,12 @@ $soloDigitos = static fn(string $tel): string => preg_replace('/\D/', '', $tel) 
 // Dirección pública de la invitación, para el mensaje de WhatsApp.
 $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
 $sitio = ($https ? 'https' : 'http') . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost') . '/';
-$invitarPorWa = static function (array $i) use ($sitio, $soloDigitos): string {
+$linkDe = static fn(array $i): string => $sitio . '?i=' . rawurlencode((string) $i['codigo']);
+$invitarPorWa = static function (array $i) use ($linkDe, $soloDigitos): string {
     $txt = "¡Hola {$i['nombre']}! Con mucha alegría te invitamos a nuestro matrimonio 💍\n\n"
-         . "Aquí está la invitación, con todos los detalles y para confirmar asistencia:\n{$sitio}\n\n"
-         . ((int) $i['cupos'] > 1 ? "Reservamos {$i['cupos']} lugares para ustedes. " : '')
-         . "Para confirmar, escribe tu nombre tal como aparece aquí.\n\nCon cariño, Aaron & Jasne";
+         . "Esta es tu invitación personal, con todos los detalles y para confirmar asistencia:\n{$linkDe($i)}\n\n"
+         . ((int) $i['cupos'] > 1 ? "Reservamos {$i['cupos']} lugares para ustedes.\n\n" : '')
+         . "Con cariño, Aaron & Jasne";
     return 'https://wa.me/' . $soloDigitos((string) $i['telefono']) . '?text=' . rawurlencode($txt);
 };
 
@@ -242,6 +265,11 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   form.inline { display:inline; } td button, td .boton { padding:5px 9px; font-size:.6rem; }
   .cupos { display:flex; gap:4px; align-items:center; } .cupos input { width:56px; padding:4px 6px; }
   .lista-simple li { margin:6px 0; }
+  .galeria { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .galeria figure { margin:0; background:var(--claro); border:1px solid var(--linea); border-radius:4px; overflow:hidden; }
+  .galeria img { display:block; width:100%; aspect-ratio:1; object-fit:cover; background:#e4ded1; }
+  .galeria figcaption { display:flex; justify-content:space-between; align-items:center; gap:4px; padding:4px 6px; font-size:.85rem; color:var(--suave); }
+  .galeria figcaption button { padding:2px 7px; }
   details summary { cursor:pointer; color:var(--oliva); font-weight:600; }
   .login { min-height:100svh; display:flex; align-items:center; justify-content:center; padding:20px; background:var(--oliva); color:var(--claro); }
   .login form { width:100%; max-width:300px; text-align:center; }
@@ -287,6 +315,7 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
     <nav class="pestanas eyebrow">
       <a class="<?= $vista === 'invitados' ? 'activo' : '' ?>" href="?v=invitados">Invitados (<?= $t['invitados'] ?>)</a>
       <a class="<?= $vista === 'respuestas' ? 'activo' : '' ?>" href="?v=respuestas">Respuestas (<?= count($respuestas) ?>)</a>
+      <a class="<?= $vista === 'fotos' ? 'activo' : '' ?>" href="?v=fotos">Fotos (<?= $fotosN ?>)</a>
     </nav>
 
     <section class="cifras">
@@ -368,9 +397,12 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
               </form>
             </td>
             <td data-t="Invitación">
-              <?php if ($i['telefono']): ?>
-                <a class="boton wa" href="<?= e($invitarPorWa($i)) ?>" target="_blank" rel="noopener">Enviar por WhatsApp</a>
-              <?php else: ?><span class="sub">sin teléfono</span><?php endif; ?>
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <?php if ($i['telefono']): ?>
+                  <a class="boton wa" href="<?= e($invitarPorWa($i)) ?>" target="_blank" rel="noopener">WhatsApp</a>
+                <?php endif; ?>
+                <button type="button" data-copiar="<?= e($linkDe($i)) ?>">Copiar link</button>
+              </div>
             </td>
             <td>
               <form method="post" class="inline" onsubmit="return confirm(<?= e(json_encode('¿Quitar a ' . $i['nombre'] . ' de la lista?', JSON_UNESCAPED_UNICODE)) ?>)">
@@ -386,6 +418,79 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
       <?php endif; ?>
       <?php if ($sueltas): ?><p class="sub" style="margin-top:14px"><?= $sueltas ?> respuesta(s) son de personas fuera de la lista: están en la pestaña Respuestas.</p><?php endif; ?>
     <?php endif; ?>
+
+  <?php elseif ($vista === 'fotos'): ?>
+
+    <?php $rf = reglas_fotos(); $est = estado_fotos(); $mb = static fn(int $b): string => number_format($b / 1048576, 0, ',', '.') . ' MB'; ?>
+    <div class="cargar">
+      <section class="tarjeta">
+        <h3>Subida de fotos: <?= ['antes' => 'todavía cerrada', 'abierto' => 'ABIERTA', 'cerrado' => 'terminada'][$est] ?></h3>
+        <?php if ($rf['desde']): ?>
+          <p class="sub" style="margin:0">Abierta desde el <?= e($fecha($rf['desde'])) ?> hasta el <?= e($fecha($rf['hasta'])) ?>.</p>
+        <?php else: ?>
+          <p class="sub" style="margin:0">Sin fechas configuradas (config.php › fotos › desde / hasta).</p>
+        <?php endif; ?>
+        <p style="margin:10px 0 0"><?= $fotosN ?> de <?= $rf['max_fotos'] ?> fotos · <?= $mb((int) $fotosTot['b']) ?> de <?= $mb($rf['max_total_mb'] * 1048576) ?></p>
+        <p class="sub" style="margin:4px 0 0">Máximo <?= $rf['max_mb'] ?> MB por foto y <?= $rf['por_hora'] ?> fotos por persona cada hora.</p>
+      </section>
+      <section class="tarjeta" style="text-align:center">
+        <h3>QR para las mesas</h3>
+        <div id="qr" style="display:inline-block;background:#fff;padding:10px"></div>
+        <p class="sub" style="margin:6px 0"><?= e($sitio) ?>#fotos</p>
+        <button type="button" onclick="imprimirQr()">Imprimir</button>
+      </section>
+    </div>
+
+    <?php if ($fotosN): ?>
+      <p style="margin:0 0 14px">Descargar todas en ZIP:
+        <?php for ($n = 1, $partes = (int) ceil($fotosN / FOTOS_POR_ZIP); $n <= $partes; $n++): ?>
+          <a class="boton" href="fotos-zip.php?parte=<?= $n ?>"><?= $partes > 1 ? "Parte {$n}" : 'Descargar' ?></a>
+        <?php endfor; ?>
+        <?php if ($fotosN > FOTOS_POR_ZIP): ?><span class="sub">(en partes de <?= FOTOS_POR_ZIP ?>, para que el hosting no se corte)</span><?php endif; ?>
+      </p>
+      <div class="galeria">
+        <?php foreach ($fotos as $f): ?>
+          <figure>
+            <a href="foto.php?id=<?= (int) $f['id'] ?>" target="_blank" rel="noopener">
+              <img src="foto.php?id=<?= (int) $f['id'] ?>" loading="lazy" alt="Foto de <?= e($f['autor'] ?: 'un invitado') ?>">
+            </a>
+            <figcaption>
+              <span><?= e($f['autor'] ?: 'Anónimo') ?> · <?= e((new DateTimeImmutable($f['creado']))->format('H:i')) ?></span>
+              <form method="post" class="inline" onsubmit="return confirm('¿Eliminar esta foto? No se puede deshacer.')">
+                <input type="hidden" name="accion" value="borrar_foto"><input type="hidden" name="id" value="<?= (int) $f['id'] ?>">
+                <input type="hidden" name="csrf" value="<?= e(token_csrf()) ?>">
+                <button type="submit" title="Eliminar">✕</button>
+              </form>
+            </figcaption>
+          </figure>
+        <?php endforeach; ?>
+      </div>
+      <?php if ($fotosN > FOTOS_POR_PAGINA): ?>
+        <p class="filtros eyebrow" style="margin-top:16px">
+          <?php for ($n = 1; $n <= (int) ceil($fotosN / FOTOS_POR_PAGINA); $n++): ?>
+            <a class="<?= $n === $pagina ? 'activo' : '' ?>" href="?v=fotos&p=<?= $n ?>"><?= $n ?></a>
+          <?php endfor; ?>
+        </p>
+      <?php endif; ?>
+    <?php else: ?>
+      <div class="vacio">Aún no hay fotos. El día de la boda aparecerán aquí a medida que los invitados las suban.</div>
+    <?php endif; ?>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+      new QRCode(document.getElementById('qr'), { text: <?= json_encode($sitio . '#fotos') ?>, width: 168, height: 168, colorDark: '#383b2a' });
+      function imprimirQr() {
+        const img = document.querySelector('#qr canvas') || document.querySelector('#qr img');
+        const src = img.tagName === 'CANVAS' ? img.toDataURL() : img.src;
+        const w = window.open('', '_blank');
+        w.document.write('<body style="font-family:Georgia,serif;text-align:center;padding:40px;color:#383b2a">'
+          + '<h1 style="font-weight:400;letter-spacing:.1em">AARON &amp; JASNE</h1>'
+          + '<p style="font-size:22px;font-style:italic">Comparte tus fotos de hoy</p>'
+          + '<img src="' + src + '" style="width:260px;margin:20px auto;display:block">'
+          + '<p>Escanea con la cámara de tu celular</p></body>');
+        w.document.close(); w.focus(); setTimeout(() => w.print(), 300);
+      }
+    </script>
 
   <?php else: /* ─── respuestas ─── */ ?>
 
@@ -446,5 +551,15 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   <?php endif; ?>
   </main>
 <?php endif; ?>
+<script>
+  // "Copiar link": deja el link personal listo para pegar donde quieran.
+  document.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-copiar]');
+    if (!b) return;
+    try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = '¡Copiado!'; }
+    catch { prompt('Copia este link:', b.dataset.copiar); }
+    setTimeout(() => (b.textContent = 'Copiar link'), 1800);
+  });
+</script>
 </body>
 </html>

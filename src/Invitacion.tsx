@@ -13,6 +13,7 @@ import DressCode from "./components/secciones/DressCode";
 import Cita from "./components/secciones/Cita";
 import Lugar from "./components/secciones/Lugar";
 import Galeria from "./components/secciones/Galeria";
+import FotosInvitados from "./components/secciones/FotosInvitados";
 import Confirmar from "./components/secciones/Confirmar";
 import Cierre from "./components/secciones/Cierre";
 
@@ -68,6 +69,7 @@ export default function Invitacion() {
         <Cita />
         <Lugar />
         <Galeria />
+        <FotosInvitados />
         <Confirmar />
         <Cierre />
       </main>
