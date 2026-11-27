@@ -22,8 +22,18 @@ require __DIR__ . '/_base.php';
 $metodo = $_SERVER['REQUEST_METHOD'] ?? '';
 $r = reglas_fotos();
 
+/** "128M" / "1G" de php.ini → MB. */
+$iniMb = static function (string $clave): int {
+    $v = trim((string) ini_get($clave));
+    $n = (int) $v;
+    return match (strtoupper(substr($v, -1))) { 'G' => $n * 1024, 'K' => (int) ($n / 1024), 'M' => $n, default => (int) ($n / 1048576) };
+};
+// El tope real de un video es el menor entre lo configurado y lo que
+// acepta PHP en el hosting (upload_max_filesize y post_max_size).
+$maxVideoMb = min($r['max_video_mb'], max(1, $iniMb('upload_max_filesize')), max(1, $iniMb('post_max_size')) - 1);
+
 if ($metodo === 'GET') {
-    responder_json(['ok' => true, 'estado' => estado_fotos(), 'max_mb' => $r['max_mb']]);
+    responder_json(['ok' => true, 'estado' => estado_fotos(), 'max_mb' => $r['max_mb'], 'max_video_mb' => $maxVideoMb]);
 }
 if ($metodo !== 'POST') {
     header('Allow: GET, POST');
@@ -38,22 +48,33 @@ if (estado_fotos() !== 'abierto') {
 }
 
 $f = $_FILES['foto'] ?? null;
+// Un archivo más grande que post_max_size llega sin $_FILES: se avisa igual.
 if (!is_array($f) || !is_string($f['tmp_name'] ?? null)) {
-    responder_json(['ok' => false, 'error' => 'No llegó ninguna foto.'], 422);
+    $largo = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+    responder_json($largo > 1048576
+        ? ['ok' => false, 'error' => "El archivo pesa más de {$maxVideoMb} MB."]
+        : ['ok' => false, 'error' => 'No llegó ninguna foto.'], $largo > 1048576 ? 413 : 422);
 }
-if ($f['error'] === UPLOAD_ERR_INI_SIZE || $f['error'] === UPLOAD_ERR_FORM_SIZE
-    || $f['size'] > $r['max_mb'] * 1024 * 1024) {
-    responder_json(['ok' => false, 'error' => "La foto pesa más de {$r['max_mb']} MB."], 413);
+if ($f['error'] === UPLOAD_ERR_INI_SIZE || $f['error'] === UPLOAD_ERR_FORM_SIZE) {
+    responder_json(['ok' => false, 'error' => "El archivo pesa más de {$maxVideoMb} MB."], 413);
 }
 if ($f['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($f['tmp_name'])) {
-    responder_json(['ok' => false, 'error' => 'La foto no llegó completa. Inténtalo de nuevo.'], 422);
+    responder_json(['ok' => false, 'error' => 'El archivo no llegó completo. Inténtalo de nuevo.'], 422);
 }
 
 // Tipo real según el contenido del archivo, no según su nombre.
-$tipos = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/heic' => 'heic', 'image/heif' => 'heif'];
+$fotos  = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/heic' => 'heic', 'image/heif' => 'heif'];
+$videos = ['video/mp4' => 'mp4', 'video/quicktime' => 'mov', 'video/webm' => 'webm', 'video/3gpp' => '3gp', 'video/x-m4v' => 'm4v'];
+$tipos = $fotos + $videos;
 $tipo = (new finfo(FILEINFO_MIME_TYPE))->file($f['tmp_name']) ?: '';
 if (!isset($tipos[$tipo])) {
-    responder_json(['ok' => false, 'error' => 'Solo se pueden subir fotos (JPG, PNG, WEBP o HEIC).'], 415);
+    responder_json(['ok' => false, 'error' => 'Solo se pueden subir fotos o videos.'], 415);
+}
+$esVideo = isset($videos[$tipo]);
+if ($esVideo ? $f['size'] > $maxVideoMb * 1048576 : $f['size'] > $r['max_mb'] * 1048576) {
+    responder_json(['ok' => false, 'error' => $esVideo
+        ? "El video pesa más de {$maxVideoMb} MB. Prueba con uno más corto (1 minuto aprox.)."
+        : "La foto pesa más de {$r['max_mb']} MB."], 413);
 }
 
 $autor = limpiar_texto($_POST['autor'] ?? null, 80);
@@ -75,9 +96,20 @@ try {
         responder_json(['ok' => false, 'error' => 'Hay muchas fotos subiéndose a la vez. Inténtalo en unos minutos.'], 429);
     }
 
-    $t = db()->query('SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM fotos')->fetch();
-    if ((int) $t['n'] >= $r['max_fotos'] || (int) $t['b'] + $f['size'] > $r['max_total_mb'] * 1024 * 1024) {
-        responder_json(['ok' => false, 'error' => 'Ya llegamos al máximo de fotos. ¡Gracias por compartir!'], 507);
+    // Topes separados: los videos tienen su propio espacio y nunca se
+    // comen el de las fotos (ni al revés).
+    $t = db()->query("SELECT
+        SUM(CASE WHEN tipo LIKE 'video/%' THEN 0 ELSE 1 END) AS nf,
+        COALESCE(SUM(CASE WHEN tipo LIKE 'video/%' THEN 0 ELSE bytes END), 0) AS bf,
+        COALESCE(SUM(CASE WHEN tipo LIKE 'video/%' THEN bytes ELSE 0 END), 0) AS bv
+      FROM fotos")->fetch();
+    $lleno = $esVideo
+        ? (int) $t['bv'] + $f['size'] > $r['max_video_total_mb'] * 1048576
+        : (int) $t['nf'] >= $r['max_fotos'] || (int) $t['bf'] + $f['size'] > $r['max_total_mb'] * 1048576;
+    if ($lleno) {
+        responder_json(['ok' => false, 'error' => $esVideo
+            ? 'Ya llegamos al máximo de videos, pero aún puedes subir fotos. ¡Gracias!'
+            : 'Ya llegamos al máximo de fotos. ¡Gracias por compartir!'], 507);
     }
 
     // Nombre al azar: nunca se usa el nombre que trae el archivo.

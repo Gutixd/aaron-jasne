@@ -14,11 +14,15 @@ if (!sesion_activa()) {
     exit;
 }
 
-const POR_PARTE = 150; // igual que FOTOS_POR_ZIP en index.php
+// Fotos de a 150 (igual que FOTOS_POR_ZIP en index.php); videos de a 10,
+// porque cada uno pesa hasta 100 MB.
+$videos = ($_GET['tipo'] ?? '') === 'video';
+define('POR_PARTE', $videos ? 10 : 150);
 
 $parte = max(1, (int) ($_GET['parte'] ?? 1));
 $album = in_array($_GET['album'] ?? '', ['general', 'favoritas'], true) ? $_GET['album'] : null;
-$q = db()->prepare('SELECT archivo, autor, creado FROM fotos' . ($album ? ' WHERE album = ?' : '')
+$q = db()->prepare('SELECT archivo, autor, creado FROM fotos WHERE tipo ' . ($videos ? 'LIKE' : 'NOT LIKE') . " 'video/%'"
+    . ($album ? ' AND album = ?' : '')
     . ' ORDER BY creado ASC, id ASC LIMIT ' . POR_PARTE . ' OFFSET ?');
 $q->execute($album ? [$album, ($parte - 1) * POR_PARTE] : [($parte - 1) * POR_PARTE]);
 $fotos = $q->fetchAll();
@@ -47,6 +51,6 @@ $zip->close();
 
 header('Content-Type: application/zip');
 header('Content-Length: ' . filesize($tmp));
-header('Content-Disposition: attachment; filename="fotos-boda-aaron-jasne-' . ($album ?? 'todas') . '-parte-' . $parte . '.zip"');
+header('Content-Disposition: attachment; filename="' . ($videos ? 'videos' : 'fotos') . '-boda-aaron-jasne-' . ($album ?? 'todas') . '-parte-' . $parte . '.zip"');
 readfile($tmp);
 unlink($tmp);

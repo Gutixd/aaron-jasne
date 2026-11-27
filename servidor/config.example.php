@@ -30,5 +30,7 @@ return [
         'max_total_mb' => 8000,  // tope de todo lo subido
         'max_fotos'    => 3000,  // tope de cantidad
         'por_hora'     => 60,    // fotos por persona cada hora
+        'max_video_mb'       => 100,   // por video (aprox. 1 minuto)
+        'max_video_total_mb' => 10000, // tope de todos los videos
     ],
 ];

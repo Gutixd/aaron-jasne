@@ -328,6 +328,10 @@ if (sesion_activa()) {
     $regalosTotal = array_sum(array_map(static fn($g) => (int) $g['monto'], $regalos));
 
     $fotosTot = db()->query('SELECT COUNT(*) AS n, COALESCE(SUM(bytes), 0) AS b FROM fotos')->fetch();
+    // Cuántos videos hay (en el álbum que se está viendo): van en ZIP aparte.
+    $qv = db()->prepare("SELECT COUNT(*) FROM fotos WHERE tipo LIKE 'video/%'" . (in_array($_GET['album'] ?? '', ['general', 'favoritas'], true) ? ' AND album = ?' : ''));
+    $qv->execute(in_array($_GET['album'] ?? '', ['general', 'favoritas'], true) ? [$_GET['album']] : []);
+    $videosN = (int) $qv->fetchColumn();
     $porAlbum = ['general' => 0, 'favoritas' => 0];
     foreach (db()->query('SELECT album, COUNT(*) AS n FROM fotos GROUP BY album')->fetchAll() as $fa) {
         $porAlbum[$fa['album']] = (int) $fa['n'];
@@ -440,7 +444,9 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
   input, textarea { font-variant-numeric:lining-nums; }
   .galeria { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
   .galeria figure { margin:0; background:var(--claro); border:1px solid var(--linea); border-radius:4px; overflow:hidden; }
-  .galeria img { display:block; width:100%; aspect-ratio:1; object-fit:cover; background:#e4ded1; }
+  .galeria img, .galeria video { display:block; width:100%; aspect-ratio:1; object-fit:cover; background:#e4ded1; }
+  .galeria a { position:relative; display:block; }
+  .video-marca { position:absolute; left:6px; bottom:6px; background:#383b2acc; color:#f5f2eb; font-size:.7rem; padding:2px 7px; border-radius:10px; }
   .galeria figcaption { display:flex; justify-content:space-between; align-items:center; gap:4px; padding:4px 6px; font-size:.85rem; color:var(--suave); }
   .galeria figcaption button { padding:2px 7px; }
   details summary { cursor:pointer; color:var(--oliva); font-weight:600; }
@@ -787,18 +793,31 @@ $url = static fn(array $cambios): string => '?' . http_build_query(array_merge(
           <a class="<?= $albumVer === ($k ?: null) ? 'activo' : '' ?>" href="?v=fotos<?= $k ? '&album=' . $k : '' ?>"><?= e($txt) ?></a>
         <?php endforeach; ?>
       </nav>
-      <?php $nZip = $albumVer ? $porAlbum[$albumVer] : $fotosN; ?>
-      <p style="margin:0 0 14px">Descargar <?= $albumVer ? e($albumVer) : 'todas' ?> en ZIP:
+      <?php $nZip = ($albumVer ? $porAlbum[$albumVer] : $fotosN) - $videosN; ?>
+      <p style="margin:0 0 14px">Descargar fotos <?= $albumVer ? '(' . e($albumVer) . ')' : '' ?> en ZIP:
         <?php for ($n = 1, $partes = max(1, (int) ceil($nZip / FOTOS_POR_ZIP)); $n <= $partes; $n++): ?>
           <a class="boton" href="fotos-zip.php?parte=<?= $n ?><?= $albumVer ? '&album=' . $albumVer : '' ?>"><?= $partes > 1 ? "Parte {$n}" : 'Descargar' ?></a>
         <?php endfor; ?>
+      </p>
+      <?php if ($videosN): ?>
+      <p style="margin:0 0 14px">Descargar videos (<?= $videosN ?>) en ZIP:
+        <?php for ($n = 1, $partes = (int) ceil($videosN / 10); $n <= $partes; $n++): ?>
+          <a class="boton" href="fotos-zip.php?tipo=video&parte=<?= $n ?><?= $albumVer ? '&album=' . $albumVer : '' ?>"><?= $partes > 1 ? "Parte {$n}" : 'Descargar' ?></a>
+        <?php endfor; ?>
+        <span class="sub">(de a 10: pesan mucho)</span>
+      <?php endif; ?>
         <?php if ($fotosN > FOTOS_POR_ZIP): ?><span class="sub">(en partes de <?= FOTOS_POR_ZIP ?>, para que el hosting no se corte)</span><?php endif; ?>
       </p>
       <div class="galeria">
         <?php foreach ($fotos as $f): ?>
           <figure>
             <a href="foto.php?id=<?= (int) $f['id'] ?>" target="_blank" rel="noopener">
+              <?php if (str_starts_with((string) $f['tipo'], 'video/')): ?>
+                <video src="foto.php?id=<?= (int) $f['id'] ?>" preload="metadata" muted playsinline aria-label="Video de <?= e($f['autor'] ?: 'un invitado') ?>"></video>
+                <span class="video-marca">▶ video</span>
+              <?php else: ?>
               <img src="foto.php?id=<?= (int) $f['id'] ?>" loading="lazy" alt="Foto de <?= e($f['autor'] ?: 'un invitado') ?>">
+              <?php endif; ?>
             </a>
             <figcaption>
               <span><?= $f['album'] === 'favoritas' ? '★ ' : '' ?><?= e($f['autor'] ?: 'Anónimo') ?> · <?= e((new DateTimeImmutable($f['creado']))->format('H:i')) ?></span>
