@@ -184,7 +184,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         if ($errores) {
             $error = implode(' ', $errores);
         } else {
-            guardar_ajuste('contenido', $c);
+            // Solo se guarda lo que difiere del código: si se guardara todo,
+            // lo no tocado quedaría congelado y taparía las actualizaciones
+            // que vengan después desde el código (pasó con fecha y programa).
+            $base = json_decode((string) @file_get_contents(__DIR__ . '/../api/contenido-base.json'), true) ?: [];
+            guardar_ajuste('contenido', solo_cambios($c, $base));
             guardar_ajuste('fotos', array_filter($fotosVentana));
             header('Location: ./?v=contenido&ok=contenido');
             exit;

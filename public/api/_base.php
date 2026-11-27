@@ -411,3 +411,28 @@ function iso_chile(string $fecha, string $hora): ?string
         return null;
     }
 }
+
+/**
+ * Lo de $nuevo que difiere de $base. Los objetos se comparan campo a campo;
+ * las listas (programa, menú) se comparan enteras. Los saltos de línea se
+ * normalizan: el navegador manda 
+ y el código usa 
+.
+ */
+function solo_cambios(array $nuevo, array $base): array
+{
+    $norm = static fn($v) => is_string($v) ? str_replace("
+", "
+", $v) : $v;
+    $fuera = [];
+    foreach ($nuevo as $k => $v) {
+        $b = $base[$k] ?? null;
+        if (is_array($v) && !array_is_list($v) && is_array($b)) {
+            $sub = solo_cambios($v, $b);
+            if ($sub) $fuera[$k] = $sub;
+        } elseif ((is_array($v) ? json_encode($v) : $norm($v)) !== (is_array($b) ? json_encode($b) : $norm($b))) {
+            $fuera[$k] = is_string($v) ? $norm($v) : $v;
+        }
+    }
+    return $fuera;
+}

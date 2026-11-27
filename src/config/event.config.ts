@@ -79,7 +79,7 @@ export const evento = {
   lugar: {
     nombre: "Parcela 34",
     direccion: "",
-    ciudad: "",
+    ciudad: "Graneros",
     mapsUrl: "https://maps.app.goo.gl/XrdKocCUHEYDhVTQ6",
   },
 
