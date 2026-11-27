@@ -23,6 +23,12 @@ dist-ssr
 *.sln
 *.sw?
 
-.vercel
 .env*
 !.env.example
+
+# Backend: configuración con claves y bases de prueba. Nunca a git.
+public/api/config.php
+servidor/config.local.php
+servidor/*.sqlite
+CLAVE-PANEL.txt
+despliegue/

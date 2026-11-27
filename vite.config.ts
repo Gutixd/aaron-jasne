@@ -9,7 +9,16 @@ export default defineConfig({
     alias: { "@": path.resolve(import.meta.dirname, "./src") },
   },
   // 4410 y no 4400: ese puerto lo usa otro proyecto de esta máquina.
-  server: { port: 4410, open: true },
+  // /api y /panel son PHP: en local los atiende `php -S` en el 4411
+  // (lo levanta "Abrir invitacion.bat"). En Hostinger viven en el mismo dominio.
+  server: {
+    port: 4410,
+    open: true,
+    proxy: {
+      "/api": "http://localhost:4411",
+      "/panel": "http://localhost:4411",
+    },
+  },
   preview: { port: 4410 },
   build: {
     rollupOptions: {

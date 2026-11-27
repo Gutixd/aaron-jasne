@@ -1,0 +1,7 @@
+# Solo confirmar.php es público. La base compartida y la configuración
+# (con la clave de la base de datos) no se pueden pedir desde el navegador.
+Options -Indexes
+
+<FilesMatch "^(config|config\.example|_base)\.php$">
+  Require all denied
+</FilesMatch>
